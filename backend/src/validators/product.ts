@@ -1,15 +1,17 @@
-import { Types } from "mongoose";
 import { z } from "zod";
 import { PRODUCT_STATUS_VALUES } from "../types/product.js";
 
 const MAC_REGEX = /^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$/;
 const IMEI_REGEX = /^\d{14,15}$/;
+const OBJECT_ID_REGEX = /^[a-fA-F0-9]{24}$/;
+const HTTP_URL_REGEX = /^https?:\/\//i;
 
+// Strict 24-char hex match. `mongoose.Types.ObjectId.isValid` is permissive
+// (it accepts any 12-char string, numbers, Buffers, etc.) which lets invalid
+// ids reach the service layer and surface as NOT_FOUND instead of INVALID_ID.
 export const objectIdSchema = z
   .string()
-  .refine((value) => Types.ObjectId.isValid(value), {
-    message: "Invalid id",
-  });
+  .regex(OBJECT_ID_REGEX, "Invalid id");
 
 const statusSchema = z
   .union([z.number(), z.string()])
@@ -38,10 +40,14 @@ const customerIdSchema = z
   .min(1, "customerId must not be empty")
   .max(120, "customerId is too long");
 
+// Restrict to http(s) explicitly. Zod's `.url()` accepts `data:`, `file:`,
+// `javascript:`, `ftp:` etc., which would pass validation here but then fail
+// the model validator in `Product.ts` (and could be an XSS vector if rendered).
 const imageUrlSchema = z
   .string()
   .trim()
   .url("imageUrl must be a valid URL")
+  .regex(HTTP_URL_REGEX, "imageUrl must use http or https")
   .max(2048, "imageUrl is too long");
 
 const nullableImei = z.union([imeiSchema, z.null()]);

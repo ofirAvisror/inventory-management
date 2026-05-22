@@ -1,24 +1,16 @@
 import type { Request } from "express";
 import multer, { MulterError, type FileFilterCallback } from "multer";
+import { env } from "../config/env.js";
+import { ALLOWED_IMAGE_MIME_TYPES } from "../config/uploadLimits.js";
 import { HttpError } from "./error.js";
 import { PRODUCT_ERROR_CODES } from "../types/product.js";
-
-const ALLOWED_MIME_TYPES = new Set([
-  "image/png",
-  "image/jpeg",
-  "image/jpg",
-  "image/webp",
-  "image/gif",
-]);
-
-const MAX_BYTES = 5 * 1024 * 1024;
 
 function fileFilter(
   _req: Request,
   file: Express.Multer.File,
   cb: FileFilterCallback
 ): void {
-  if (!ALLOWED_MIME_TYPES.has(file.mimetype)) {
+  if (!ALLOWED_IMAGE_MIME_TYPES.has(file.mimetype)) {
     cb(
       new HttpError(
         400,
@@ -35,7 +27,7 @@ const storage = multer.memoryStorage();
 
 export const uploadSingleImage = multer({
   storage,
-  limits: { fileSize: MAX_BYTES, files: 1 },
+  limits: { fileSize: env.MAX_UPLOAD_BYTES, files: 1 },
   fileFilter,
 }).single("file");
 

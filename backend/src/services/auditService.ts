@@ -1,5 +1,5 @@
 import { Types, type ClientSession } from "mongoose";
-import { AuditLog, type AuditLogDoc } from "../models/AuditLog.js";
+import { AuditLog } from "../models/AuditLog.js";
 import type { ProductStatusValue } from "../types/product.js";
 
 export interface AuditEntryInput {
@@ -22,16 +22,39 @@ export interface PublicAuditEntry {
   createdAt: Date;
 }
 
-function toPublic(entry: AuditLogDoc): PublicAuditEntry {
+// Works for both hydrated docs (where `.id` is a virtual) and lean POJOs
+// (where only `_id` is present). Without this fallback, `id` would silently
+// be `undefined` in API responses returned via `listAuditForProduct`.
+interface AuditLogShape {
+  _id?: Types.ObjectId | string;
+  id?: string;
+  productId: Types.ObjectId | string;
+  fromStatus: number | null | undefined;
+  toStatus: number;
+  actor: string;
+  actorUserId?: Types.ObjectId | string | null;
+  reason?: string | null;
+  createdAt: Date;
+}
+
+function toPublic(entry: AuditLogShape): PublicAuditEntry {
+  const id =
+    entry.id ??
+    (entry._id ? entry._id.toString() : undefined);
+
+  if (!id) {
+    throw new Error("AuditLog entry is missing an id");
+  }
+
   return {
-    id: entry.id as string,
+    id,
     productId: entry.productId.toString(),
     fromStatus: entry.fromStatus ?? null,
     toStatus: entry.toStatus,
     actor: entry.actor as "admin" | "user",
     actorUserId: entry.actorUserId ? entry.actorUserId.toString() : null,
     reason: entry.reason ?? null,
-    createdAt: (entry as unknown as { createdAt: Date }).createdAt,
+    createdAt: entry.createdAt,
   };
 }
 
@@ -59,7 +82,7 @@ export async function writeAuditEntry(
     session ? { session } : undefined
   );
 
-  return toPublic(created[0]);
+  return toPublic(created[0] as unknown as AuditLogShape);
 }
 
 export async function listAuditForProduct(
@@ -69,9 +92,7 @@ export async function listAuditForProduct(
     productId: new Types.ObjectId(productId),
   })
     .sort({ createdAt: -1 })
-    .lean<AuditLogDoc[]>();
+    .lean<AuditLogShape[]>();
 
-  return entries.map((entry) =>
-    toPublic(entry as unknown as AuditLogDoc)
-  );
+  return entries.map((entry) => toPublic(entry));
 }

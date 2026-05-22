@@ -84,6 +84,20 @@ const envSchema = z.object({
   CLOUDINARY_API_SECRET: z
     .string()
     .min(1, "CLOUDINARY_API_SECRET is required"),
+  CLOUDINARY_UPLOAD_FOLDER: z
+    .string()
+    .min(1)
+    .default("guru-inventory/products"),
+  CLOUDINARY_UPLOAD_TIMEOUT_MS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(30_000),
+  MAX_UPLOAD_BYTES: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(5 * 1024 * 1024),
 });
 
 const parsed = envSchema.safeParse(process.env);
