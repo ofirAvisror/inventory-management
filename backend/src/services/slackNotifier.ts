@@ -40,6 +40,7 @@ async function postToWebhook(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text: fallback, blocks }),
+      signal: AbortSignal.timeout(5_000),
     });
 
     if (!response.ok) {

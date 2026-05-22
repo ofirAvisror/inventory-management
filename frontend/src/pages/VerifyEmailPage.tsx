@@ -19,7 +19,10 @@ function attemptVerification(token: string): Promise<VerificationResult> {
   const promise: Promise<VerificationResult> = api
     .get("/api/auth/verify-email", { params: { token } })
     .then((): VerificationResult => ({ ok: true }))
-    .catch((error: unknown): VerificationResult => ({ ok: false, error }));
+    .catch((error: unknown): VerificationResult => {
+      verificationAttempts.delete(token);
+      return { ok: false, error };
+    });
 
   verificationAttempts.set(token, promise);
   return promise;
@@ -39,6 +42,9 @@ export function VerifyEmailPage() {
       setErrorMessage(t("auth.verify.missingToken"));
       return;
     }
+
+    setStatus("pending");
+    setErrorMessage(null);
 
     let cancelled = false;
 

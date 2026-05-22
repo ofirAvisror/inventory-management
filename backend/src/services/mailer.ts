@@ -11,6 +11,9 @@ function getTransporter(): Transporter {
     port: env.MAIL_PORT,
     secure: env.MAIL_USE_SSL,
     requireTLS: env.MAIL_USE_TLS && !env.MAIL_USE_SSL,
+    connectionTimeout: 5_000,
+    greetingTimeout: 5_000,
+    socketTimeout: 10_000,
     auth: {
       user: env.MAIL_USERNAME,
       pass: env.MAIL_PASSWORD,
