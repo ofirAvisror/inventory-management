@@ -19,16 +19,24 @@ export const productKeys = {
   audit: (id: string) => [...productKeys.all, "audit", id] as const,
 };
 
+const DEFAULT_PAGE = 1;
+const DEFAULT_LIMIT = 20;
+
 function normalizeListKey(query: ListProductsQuery) {
   return {
     search: query.search ?? "",
     status: query.status ?? null,
     customerId: query.customerId ?? "",
-    page: query.page ?? 1,
-    limit: query.limit ?? 20,
+    page: query.page ?? DEFAULT_PAGE,
+    limit: query.limit ?? DEFAULT_LIMIT,
   };
 }
 
+// Always serialize `page` and `limit` so the network request matches the
+// React Query cache key produced by `normalizeListKey` (which also fills in
+// defaults). Without this, an undefined `page`/`limit` would produce a cache
+// key of {page:1,limit:20} but a query string with neither, causing the cache
+// and the server result for "page 1" to diverge.
 function toQueryString(query: ListProductsQuery): string {
   const params = new URLSearchParams();
   if (query.search) params.set("search", query.search);
@@ -36,8 +44,8 @@ function toQueryString(query: ListProductsQuery): string {
     params.set("status", String(query.status));
   }
   if (query.customerId) params.set("customerId", query.customerId);
-  if (query.page !== undefined) params.set("page", String(query.page));
-  if (query.limit !== undefined) params.set("limit", String(query.limit));
+  params.set("page", String(query.page ?? DEFAULT_PAGE));
+  params.set("limit", String(query.limit ?? DEFAULT_LIMIT));
   const s = params.toString();
   return s.length > 0 ? `?${s}` : "";
 }

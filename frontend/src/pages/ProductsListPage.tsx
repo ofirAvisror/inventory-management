@@ -39,11 +39,12 @@ import {
 import { useProductsQuery } from "../features/products/hooks/useProductsQuery";
 import { translateProductErrorCode } from "../features/products/lib/errors";
 import { reconcileSelectionAfterBulk } from "../features/products/lib/selection";
-import type {
-  BulkResult,
-  ListProductsQuery,
-  ProductStatusValue,
-  PublicProduct,
+import {
+  isProductStatusValue,
+  type BulkResult,
+  type ListProductsQuery,
+  type ProductStatusValue,
+  type PublicProduct,
 } from "../features/products/types";
 import { toApiError } from "../lib/api";
 import { useDebouncedValue } from "../lib/useDebouncedValue";
@@ -58,6 +59,31 @@ type DeleteModalState =
   | { open: false }
   | { open: true; target: DeleteTarget };
 
+// Parse an integer from a URL search param, falling back to a default if the
+// value is missing, non-numeric, or out of range. Without this guard
+// `Number("abc")` would produce `NaN`, which then leaks into the API call.
+function parseIntParam(
+  raw: string | null,
+  fallback: number,
+  min: number,
+  max: number,
+): number {
+  if (raw === null || raw === "") return fallback;
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed)) return fallback;
+  const intValue = Math.trunc(parsed);
+  if (intValue < min) return min;
+  if (intValue > max) return max;
+  return intValue;
+}
+
+function parseStatusParam(raw: string | null): ProductStatusValue | "" {
+  if (raw === null || raw === "") return "";
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed)) return "";
+  return isProductStatusValue(parsed) ? parsed : "";
+}
+
 export function ProductsListPage() {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -65,17 +91,10 @@ export function ProductsListPage() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const search = searchParams.get("search") ?? "";
-  const statusParam = searchParams.get("status");
-  const status: ProductStatusValue | "" =
-    statusParam && !Number.isNaN(Number(statusParam))
-      ? (Number(statusParam) as ProductStatusValue)
-      : "";
+  const status = parseStatusParam(searchParams.get("status"));
   const customerId = searchParams.get("customerId") ?? "";
-  const page = Math.max(1, Number(searchParams.get("page") ?? "1"));
-  const limit = Math.max(
-    1,
-    Math.min(100, Number(searchParams.get("limit") ?? "20")),
-  );
+  const page = parseIntParam(searchParams.get("page"), 1, 1, 10_000);
+  const limit = parseIntParam(searchParams.get("limit"), 20, 1, 100);
 
   // Debounce the search & customerId text inputs to avoid hammering the API
   // on every keystroke. Status select is applied immediately.

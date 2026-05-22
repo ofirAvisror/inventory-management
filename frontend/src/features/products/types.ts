@@ -98,3 +98,13 @@ export function isProductErrorCode(value: unknown): value is ProductErrorCode {
     Object.values(PRODUCT_ERROR_CODES).includes(value as ProductErrorCode)
   );
 }
+
+export function isProductStatusValue(
+  value: unknown,
+): value is ProductStatusValue {
+  return (
+    typeof value === "number" &&
+    Number.isInteger(value) &&
+    (PRODUCT_STATUS_VALUES as readonly number[]).includes(value)
+  );
+}

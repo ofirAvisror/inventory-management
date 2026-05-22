@@ -75,11 +75,14 @@ export function AuditLogDrawer({
       aria-modal="true"
       aria-label={t("products.audit.title")}
       className="fixed inset-0 z-40 flex"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
-      }}
     >
-      <div className="flex-1 bg-black/40 backdrop-blur-[1px]" aria-hidden="true" />
+      <button
+        type="button"
+        onMouseDown={onClose}
+        aria-label={t("common.close")}
+        tabIndex={-1}
+        className="flex-1 cursor-default bg-black/40 backdrop-blur-[1px]"
+      />
       <aside className="ms-auto flex h-full w-full max-w-md flex-col border-s border-zinc-200 bg-white shadow-2xl dark:border-zinc-800 dark:bg-zinc-900 sm:max-w-md">
         <header className="flex items-start justify-between gap-3 border-b border-zinc-200 px-5 py-4 dark:border-zinc-800">
           <div>

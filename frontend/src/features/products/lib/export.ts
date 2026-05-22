@@ -115,17 +115,18 @@ export function downloadCsv(filename: string, csv: string): void {
 
 let hebrewFontPromise: Promise<string | null> | null = null;
 
-// Lazy-fetch a Hebrew-capable TTF from a public CDN and base64-encode it.
-// jspdf's default Helvetica font does not render Hebrew, so we install
-// "NotoSansHebrew" on demand. The cost is paid only when the user actually
-// exports Hebrew content.
+// jspdf only understands TTF/OTF — it cannot parse WOFF/WOFF2 wrappers. We
+// therefore pull the upstream Noto TTF straight from the official notofonts
+// release repo via jsDelivr. The font is fetched lazily so the table page
+// pays nothing until the user actually exports Hebrew content.
+const HEBREW_TTF_URL =
+  "https://cdn.jsdelivr.net/gh/notofonts/notofonts.github.io/fonts/NotoSansHebrew/hinted/ttf/NotoSansHebrew-Regular.ttf";
+
 async function fetchHebrewFontBase64(): Promise<string | null> {
   if (!hebrewFontPromise) {
     hebrewFontPromise = (async () => {
       try {
-        const response = await fetch(
-          "https://cdn.jsdelivr.net/npm/@fontsource/noto-sans-hebrew@5.2.5/files/noto-sans-hebrew-hebrew-400-normal.woff",
-        );
+        const response = await fetch(HEBREW_TTF_URL);
         if (!response.ok) return null;
         const buffer = await response.arrayBuffer();
         return arrayBufferToBase64(buffer);

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "../../../components/ui/Button";
 import { Modal } from "../../../components/ui/Modal";
@@ -29,6 +29,16 @@ export function BulkResultModal({
   const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
   const [showAllSuccess, setShowAllSuccess] = useState(false);
+
+  // Reset transient UI state whenever a new payload (or open state) arrives,
+  // so the next bulk result doesn't start with stale "copied" / "show more"
+  // values from the previous one.
+  useEffect(() => {
+    if (!open) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setCopied(false);
+    setShowAllSuccess(false);
+  }, [open, payload]);
 
   const participantsById = useMemo(() => {
     const map = new Map<string, PublicProduct>();

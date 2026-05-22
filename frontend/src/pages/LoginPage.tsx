@@ -20,6 +20,17 @@ type LoginFormValues = {
 
 type LocationState = { from?: string } | null;
 
+// Accept only same-origin internal paths. We reject protocol-relative URLs
+// (`//evil.com`) and anything that does not start with a single slash, so a
+// crafted navigation state cannot redirect the user off-site after login.
+function safeInternalPath(candidate: unknown, fallback: string): string {
+  if (typeof candidate !== "string") return fallback;
+  if (!candidate.startsWith("/")) return fallback;
+  if (candidate.startsWith("//")) return fallback;
+  if (candidate.startsWith("/\\")) return fallback;
+  return candidate;
+}
+
 export function LoginPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -27,8 +38,10 @@ export function LoginPage() {
   const { user, refresh } = useAuth();
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const redirectTo =
-    (location.state as LocationState)?.from ?? paths.products;
+  const redirectTo = safeInternalPath(
+    (location.state as LocationState)?.from,
+    paths.products,
+  );
 
   useEffect(() => {
     if (user) {
