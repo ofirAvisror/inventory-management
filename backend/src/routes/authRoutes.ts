@@ -10,7 +10,7 @@ import {
   verifyEmailHandler,
 } from "../controllers/authController.js";
 import { requireAuth } from "../middleware/auth.js";
-import { authRateLimiter } from "../middleware/rateLimit.js";
+import { authRateLimiter, loginRateLimiter } from "../middleware/rateLimit.js";
 import { validateBody } from "../middleware/validate.js";
 import {
   forgotPasswordSchema,
@@ -40,7 +40,7 @@ router.post(
 
 router.post(
   "/login",
-  authRateLimiter,
+  loginRateLimiter,
   validateBody(loginSchema),
   loginHandler
 );

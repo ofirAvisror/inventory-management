@@ -8,6 +8,23 @@ import { paths } from "../routes/paths";
 
 type Status = "pending" | "success" | "error";
 
+type VerificationResult = { ok: true } | { ok: false; error: unknown };
+
+const verificationAttempts = new Map<string, Promise<VerificationResult>>();
+
+function attemptVerification(token: string): Promise<VerificationResult> {
+  const existing = verificationAttempts.get(token);
+  if (existing) return existing;
+
+  const promise: Promise<VerificationResult> = api
+    .get("/api/auth/verify-email", { params: { token } })
+    .then((): VerificationResult => ({ ok: true }))
+    .catch((error: unknown): VerificationResult => ({ ok: false, error }));
+
+  verificationAttempts.set(token, promise);
+  return promise;
+}
+
 export function VerifyEmailPage() {
   const { t } = useTranslation();
   const [searchParams] = useSearchParams();
@@ -25,20 +42,18 @@ export function VerifyEmailPage() {
 
     let cancelled = false;
 
-    async function run() {
-      try {
-        await api.get("/api/auth/verify-email", { params: { token } });
-        if (!cancelled) setStatus("success");
-      } catch (error) {
-        if (cancelled) return;
-        setStatus("error");
-        setErrorMessage(
-          extractErrorMessage(error, t("auth.verify.errorBody")),
-        );
+    void attemptVerification(token).then((result) => {
+      if (cancelled) return;
+      if (result.ok) {
+        setStatus("success");
+        return;
       }
-    }
+      setStatus("error");
+      setErrorMessage(
+        extractErrorMessage(result.error, t("auth.verify.errorBody")),
+      );
+    });
 
-    void run();
     return () => {
       cancelled = true;
     };

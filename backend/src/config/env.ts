@@ -54,6 +54,18 @@ const envSchema = z.object({
 
   RATE_LIMIT_REQUESTS: z.coerce.number().int().positive().default(5),
   RATE_LIMIT_PERIOD: z.coerce.number().int().positive().default(60),
+
+  SLACK_ALERTS_ENABLED: booleanFromString.default(false),
+  SLACK_WEBHOOK_URL_NEW_USERS: z
+    .string()
+    .url("SLACK_WEBHOOK_URL_NEW_USERS must be a valid URL")
+    .optional(),
+  SLACK_WEBHOOK_URL_ALERTS_SECURITY: z
+    .string()
+    .url("SLACK_WEBHOOK_URL_ALERTS_SECURITY must be a valid URL")
+    .optional(),
+  LOGIN_FAIL_THRESHOLD: z.coerce.number().int().positive().default(5),
+  LOGIN_FAIL_WINDOW_MINUTES: z.coerce.number().int().positive().default(60),
 });
 
 const parsed = envSchema.safeParse(process.env);

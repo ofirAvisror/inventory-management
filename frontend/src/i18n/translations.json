@@ -18,6 +18,7 @@
         "email": "Email",
         "emailPlaceholder": "you@example.com",
         "password": "Password",
+        "newPassword": "New password",
         "passwordPlaceholder": "••••••••",
         "confirmPassword": "Confirm password",
         "showPassword": "Show password",
@@ -62,6 +63,17 @@
         "successTitle": "Check your inbox",
         "successBody": "If an account exists for this email, a password reset link has been sent."
       },
+      "reset": {
+        "title": "Choose a new password",
+        "subtitle": "Pick a strong password you haven't used before.",
+        "submit": "Update password",
+        "submitting": "Updating…",
+        "backToLogin": "Back to sign in",
+        "successTitle": "Password updated",
+        "successBody": "Your password has been updated. You can now sign in with the new one.",
+        "errorTitle": "Reset link issue",
+        "missingToken": "This reset link is missing a token. Please request a new one."
+      },
       "verify": {
         "verifyingTitle": "Verifying your email",
         "verifyingSubtitle": "One moment while we activate your account…",
@@ -93,6 +105,7 @@
         "email": "אימייל",
         "emailPlaceholder": "you@example.com",
         "password": "סיסמה",
+        "newPassword": "סיסמה חדשה",
         "passwordPlaceholder": "••••••••",
         "confirmPassword": "אימות סיסמה",
         "showPassword": "הצגת סיסמה",
@@ -136,6 +149,17 @@
         "backToLogin": "חזרה להתחברות",
         "successTitle": "בדוק את תיבת הדואר שלך",
         "successBody": "אם קיים חשבון לאימייל זה, נשלח אליו קישור לאיפוס סיסמה."
+      },
+      "reset": {
+        "title": "בחירת סיסמה חדשה",
+        "subtitle": "בחר סיסמה חזקה שלא השתמשת בה בעבר.",
+        "submit": "עדכון סיסמה",
+        "submitting": "מעדכן…",
+        "backToLogin": "חזרה להתחברות",
+        "successTitle": "הסיסמה עודכנה",
+        "successBody": "הסיסמה עודכנה בהצלחה. אפשר להתחבר עם הסיסמה החדשה.",
+        "errorTitle": "בעיה בקישור האיפוס",
+        "missingToken": "חסר טוקן בקישור האיפוס. נא לבקש קישור חדש."
       },
       "verify": {
         "verifyingTitle": "מאמת את כתובת האימייל שלך",

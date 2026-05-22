@@ -24,6 +24,9 @@ const userSchema = new Schema(
 
     passwordResetTokenHash: { type: String, default: null },
     passwordResetExpiresAt: { type: Date, default: null },
+
+    failedLoginCount: { type: Number, default: 0, required: true },
+    failedLoginWindowStart: { type: Date, default: null },
   },
   { timestamps: true }
 );

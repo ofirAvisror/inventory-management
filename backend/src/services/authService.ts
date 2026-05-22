@@ -7,6 +7,7 @@ import {
   sendPasswordResetEmail,
   sendVerificationEmail,
 } from "./mailer.js";
+import { notifyNewUser, notifySecurityAlert } from "./slackNotifier.js";
 import {
   generateOpaqueToken,
   hashToken,
@@ -68,7 +69,51 @@ export async function registerUser(
 
   await sendVerificationEmail(email, verificationToken);
 
+  void notifyNewUser({
+    email: user.email,
+    role: user.role,
+    createdAt: user.createdAt,
+  });
+
   return { user: toPublic(user) };
+}
+
+async function handleFailedLogin(
+  user: UserDoc,
+  ip: string | undefined
+): Promise<void> {
+  const now = new Date();
+  const windowMs = env.LOGIN_FAIL_WINDOW_MINUTES * 60_000;
+  const threshold = env.LOGIN_FAIL_THRESHOLD;
+
+  const windowStart = user.failedLoginWindowStart;
+  const isNewWindow =
+    !windowStart || now.getTime() - windowStart.getTime() >= windowMs;
+
+  const update = isNewWindow
+    ? { $set: { failedLoginCount: 1, failedLoginWindowStart: now } }
+    : { $inc: { failedLoginCount: 1 } };
+
+  const updated = await User.findByIdAndUpdate(user._id, update, {
+    new: true,
+  });
+
+  if (!updated) return;
+
+  if (updated.failedLoginCount >= threshold) {
+    void notifySecurityAlert({
+      kind: "failed_logins",
+      email: updated.email,
+      ip: ip ?? "unknown",
+      count: updated.failedLoginCount,
+      windowStartedAt: updated.failedLoginWindowStart ?? now,
+      windowMinutes: env.LOGIN_FAIL_WINDOW_MINUTES,
+    });
+
+    await User.findByIdAndUpdate(updated._id, {
+      $set: { failedLoginCount: 0, failedLoginWindowStart: null },
+    });
+  }
 }
 
 export async function resendVerification(email: string): Promise<void> {
@@ -119,7 +164,8 @@ export interface LoginResult {
 
 export async function loginUser(
   email: string,
-  password: string
+  password: string,
+  ip?: string
 ): Promise<LoginResult> {
   const user = await User.findOne({ email });
   if (!user) {
@@ -132,6 +178,7 @@ export async function loginUser(
 
   const passwordOk = await bcrypt.compare(password, user.passwordHash);
   if (!passwordOk) {
+    await handleFailedLogin(user, ip);
     throw new HttpError(
       401,
       AUTH_ERROR_CODES.INVALID_CREDENTIALS,
@@ -145,6 +192,12 @@ export async function loginUser(
       AUTH_ERROR_CODES.EMAIL_NOT_VERIFIED,
       "Please verify your email before logging in"
     );
+  }
+
+  if (user.failedLoginCount > 0 || user.failedLoginWindowStart) {
+    await User.findByIdAndUpdate(user._id, {
+      $set: { failedLoginCount: 0, failedLoginWindowStart: null },
+    });
   }
 
   const role = user.role as "admin" | "user";

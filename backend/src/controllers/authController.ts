@@ -49,7 +49,7 @@ export async function loginHandler(
 ): Promise<void> {
   try {
     const { email, password } = req.body;
-    const { user, tokens } = await loginUser(email, password);
+    const { user, tokens } = await loginUser(email, password, req.ip);
     setAuthCookies(res, tokens.accessToken, tokens.refreshToken);
     res.json({ user });
   } catch (err) {
