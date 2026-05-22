@@ -370,7 +370,18 @@ export async function updateProduct(
   }
 }
 
-export async function deleteProduct(id: string): Promise<void> {
+export interface DeleteOptions {
+  // When true, the per-item Slack notification is suppressed. Callers
+  // performing batch operations (bulkDelete) set this so we don't spam Slack
+  // with N notifications in addition to the aggregate bulk_action one.
+  silent?: boolean;
+}
+
+export async function deleteProduct(
+  id: string,
+  ctx: ActorContext,
+  options: DeleteOptions = {}
+): Promise<void> {
   if (!Types.ObjectId.isValid(id)) {
     throw new HttpError(
       400,
@@ -385,6 +396,18 @@ export async function deleteProduct(id: string): Promise<void> {
       PRODUCT_ERROR_CODES.NOT_FOUND,
       "Product not found"
     );
+  }
+
+  if (!options.silent) {
+    void notifyInventoryEvent({
+      kind: "bulk_action",
+      action: "delete",
+      total: 1,
+      successCount: 1,
+      failureCount: 0,
+      actor: actorLabel(ctx),
+      actorUserId: ctx.userId ?? undefined,
+    });
   }
 }
 
@@ -514,7 +537,7 @@ export async function bulkDelete(
 
   for (const id of ids) {
     try {
-      await deleteProduct(id);
+      await deleteProduct(id, ctx, { silent: true });
       result.success.push({ id });
     } catch (err) {
       const { code, message } = describeError(err);

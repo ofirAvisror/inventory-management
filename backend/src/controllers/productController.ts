@@ -106,7 +106,7 @@ export async function deleteProductHandler(
 ): Promise<void> {
   try {
     const { id } = getValidatedParams<IdParamInput>(req);
-    await deleteProduct(id);
+    await deleteProduct(id, actorContext(req));
     res.json({ message: "Product deleted" });
   } catch (err) {
     next(err);
