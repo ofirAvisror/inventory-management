@@ -1,0 +1,24 @@
+reviews:
+  # Set to false if you want to suppress the "Review skipped" status message
+  review_status: true
+  auto_review:
+    enabled: true
+    drafts: true
+    # Enable auto-reviews for non-default base branches
+    base_branches:
+      - main
+      - stg
+      - dev
+      - feature/*
+
+  # Optional: fine-tune when reviews trigger
+  triggers:
+    on_open: true
+    on_update: true
+    on_reopen: true
+
+  # Optional: customize review depth or style here if desired
+  # rules:
+  #   max_files: 200
+  #   max_diff_lines: 2000
+
