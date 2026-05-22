@@ -47,7 +47,6 @@ export function RowActionsMenu({
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
-        aria-haspopup="menu"
         aria-expanded={open}
         aria-label={t("products.row.menu")}
         className="inline-flex h-11 w-11 items-center justify-center rounded-md text-zinc-600 transition hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
@@ -55,15 +54,11 @@ export function RowActionsMenu({
         <span aria-hidden="true" className="text-lg leading-none">⋮</span>
       </button>
       {open ? (
-        <div
-          role="menu"
-          className="absolute end-0 top-full z-30 mt-1 min-w-[10rem] overflow-hidden rounded-lg border border-zinc-200 bg-white py-1 shadow-lg dark:border-zinc-800 dark:bg-zinc-900"
-        >
+        <div className="absolute end-0 top-full z-30 mt-1 min-w-[10rem] overflow-hidden rounded-lg border border-zinc-200 bg-white py-1 shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
           {items.map((item) => (
             <button
               key={item.label}
               type="button"
-              role="menuitem"
               onClick={() => {
                 setOpen(false);
                 item.onClick();

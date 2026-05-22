@@ -110,7 +110,9 @@
       "next": "Next",
       "selected": "selected",
       "yes": "Yes",
-      "no": "No"
+      "no": "No",
+      "notifications": "Notifications",
+      "dismiss": "Dismiss"
     },
     "products": {
       "title": "Products",
@@ -382,7 +384,9 @@
       "next": "הבא",
       "selected": "נבחרו",
       "yes": "כן",
-      "no": "לא"
+      "no": "לא",
+      "notifications": "התראות",
+      "dismiss": "סגירה"
     },
     "products": {
       "title": "מוצרים",

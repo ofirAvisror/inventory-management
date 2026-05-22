@@ -160,14 +160,23 @@ export async function downloadPdf(
 
   const doc = new JsPDF({ orientation: "landscape", unit: "pt" });
 
-  const isHebrew = language === "he";
-  if (isHebrew) {
+  // Accept "he", "he-IL", "HE", etc. so locale variants are still rendered
+  // with Hebrew rules instead of falling through to the Helvetica path.
+  const isHebrewLocale = language.toLowerCase().startsWith("he");
+
+  // We can only commit to the Hebrew font if it actually loads. If the CDN
+  // fetch fails we fall back to Helvetica so the PDF still renders (Latin
+  // text and digits stay readable; Hebrew glyphs will be missing, but that
+  // is strictly better than crashing on an unregistered font).
+  let tableFont: "NotoSansHebrew" | "helvetica" = "helvetica";
+  if (isHebrewLocale) {
     const fontBase64 = await fetchHebrewFontBase64();
     if (fontBase64) {
       doc.addFileToVFS("NotoSansHebrew.ttf", fontBase64);
       doc.addFont("NotoSansHebrew.ttf", "NotoSansHebrew", "normal");
       doc.setFont("NotoSansHebrew");
       doc.setR2L(true);
+      tableFont = "NotoSansHebrew";
     }
   }
 
@@ -185,7 +194,7 @@ export async function downloadPdf(
     body,
     margin: { top: 60, right: 24, bottom: 36, left: 24 },
     styles: {
-      font: isHebrew ? "NotoSansHebrew" : "helvetica",
+      font: tableFont,
       fontSize: 8,
       cellPadding: 4,
       overflow: "linebreak",
@@ -193,15 +202,15 @@ export async function downloadPdf(
     headStyles: {
       fillColor: [39, 39, 42],
       textColor: 255,
-      font: isHebrew ? "NotoSansHebrew" : "helvetica",
+      font: tableFont,
     },
     didDrawPage: () => {
       doc.setFontSize(12);
-      doc.setFont(isHebrew ? "NotoSansHebrew" : "helvetica", "normal");
+      doc.setFont(tableFont, "normal");
       doc.text(t("products.title"), 24, 36);
       doc.setFontSize(8);
       doc.text(
-        new Date().toLocaleString(isHebrew ? "he-IL" : "en-US"),
+        new Date().toLocaleString(isHebrewLocale ? "he-IL" : "en-US"),
         doc.internal.pageSize.getWidth() - 24,
         36,
         { align: "right" },

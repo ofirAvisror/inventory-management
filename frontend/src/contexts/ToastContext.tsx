@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
+import { useTranslation } from "react-i18next";
 
 export type ToastVariant = "success" | "error" | "info" | "warning";
 
@@ -125,10 +126,11 @@ function ToastViewport({
   toasts: Toast[];
   dismiss: (id: number) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <div
       role="region"
-      aria-label="Notifications"
+      aria-label={t("common.notifications")}
       className="pointer-events-none fixed inset-x-0 bottom-4 z-[100] flex flex-col items-center gap-2 px-4 sm:items-end sm:px-6"
     >
       {toasts.map((toast) => (
@@ -164,7 +166,7 @@ function ToastViewport({
               <button
                 type="button"
                 onClick={() => dismiss(toast.id)}
-                aria-label="Dismiss"
+                aria-label={t("common.dismiss")}
                 className="inline-flex h-6 w-6 items-center justify-center rounded-md text-current/70 hover:text-current"
               >
                 <span aria-hidden="true">×</span>

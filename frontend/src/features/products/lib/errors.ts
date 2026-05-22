@@ -16,8 +16,9 @@ export function translateProductErrorCode(
   if (code && isProductErrorCode(code)) {
     return t(`products.errors.${code}`);
   }
-  if (fallbackMessage && fallbackMessage.length > 0) {
-    return fallbackMessage;
+  const trimmed = fallbackMessage?.trim() ?? "";
+  if (trimmed.length > 0) {
+    return trimmed;
   }
   return t("products.errors.unknown");
 }

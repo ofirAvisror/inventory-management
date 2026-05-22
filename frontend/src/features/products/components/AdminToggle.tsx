@@ -17,11 +17,13 @@ export function AdminToggle() {
 
   return (
     <label
-      className={`inline-flex h-11 cursor-pointer select-none items-center gap-2 rounded-lg border px-3 text-sm font-medium transition ${
+      className={`inline-flex h-11 select-none items-center gap-2 rounded-lg border px-3 text-sm font-medium transition ${
+        disabled ? "cursor-default" : "cursor-pointer"
+      } ${
         isEffectiveAdmin
           ? "border-amber-400 bg-amber-50 text-amber-800 dark:border-amber-600/60 dark:bg-amber-950/40 dark:text-amber-200"
           : "border-zinc-300 hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
-      } ${disabled ? "cursor-default opacity-90" : ""}`}
+      } ${disabled ? "opacity-90" : ""}`}
       title={label}
     >
       <input
