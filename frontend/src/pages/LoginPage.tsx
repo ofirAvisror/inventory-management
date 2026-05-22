@@ -1,13 +1,14 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { AuthLayout } from "../components/layout/AuthLayout";
 import { Alert } from "../components/ui/Alert";
 import { SubmitButton } from "../components/ui/SubmitButton";
 import { TextField } from "../components/ui/TextField";
+import { useAuth } from "../contexts/AuthContext";
 import { api, extractErrorMessage } from "../lib/api";
 import { buildEmailSchema } from "../lib/validation";
 import { paths } from "../routes/paths";
@@ -17,9 +18,23 @@ type LoginFormValues = {
   password: string;
 };
 
+type LocationState = { from?: string } | null;
+
 export function LoginPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { user, refresh } = useAuth();
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const redirectTo =
+    (location.state as LocationState)?.from ?? paths.products;
+
+  useEffect(() => {
+    if (user) {
+      navigate(redirectTo, { replace: true });
+    }
+  }, [user, navigate, redirectTo]);
 
   const schema = z.object({
     email: buildEmailSchema(t),
@@ -39,6 +54,8 @@ export function LoginPage() {
     setSubmitError(null);
     try {
       await api.post("/api/auth/login", values);
+      await refresh();
+      navigate(redirectTo, { replace: true });
     } catch (error) {
       setSubmitError(extractErrorMessage(error, t("auth.errors.generic")));
     }
