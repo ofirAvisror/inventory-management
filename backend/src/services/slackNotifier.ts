@@ -58,19 +58,65 @@ interface SlackBlock {
   [key: string]: unknown;
 }
 
+interface SlackAttachment {
+  color?: string;
+  blocks?: SlackBlock[];
+}
+
+const SLACK_ACCENT_COLORS = [
+  "#7B68EE",
+  "#36a64f",
+  "#2eb886",
+  "#E8912D",
+  "#1264A3",
+  "#9B59B6",
+  "#E01E5A",
+  "#F2C744",
+] as const;
+
+function pickRandomAccentColor(): string {
+  return SLACK_ACCENT_COLORS[
+    Math.floor(Math.random() * SLACK_ACCENT_COLORS.length)
+  ]!;
+}
+
+function formatSlackDateTime(date: Date): string {
+  const unix = Math.floor(date.getTime() / 1000);
+  const fallback = date.toLocaleString("en-GB", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+  return `<!date^${unix}^{date_short_pretty} at {time}|${fallback}>`;
+}
+
+function formatRoleLabel(role: string): string {
+  if (role === "admin") return ":key: *Admin*";
+  if (role === "user") return ":bust_in_silhouette: *User*";
+  return `*${role}*`;
+}
+
 async function postToWebhook(
   url: string | undefined,
   blocks: SlackBlock[],
-  fallback: string
+  fallback: string,
+  attachments?: SlackAttachment[]
 ): Promise<void> {
   if (!env.SLACK_ALERTS_ENABLED) return;
   if (!url) return;
+
+  const body: Record<string, unknown> = { text: fallback };
+  if (attachments?.length) {
+    body.attachments = attachments;
+    if (blocks.length) body.blocks = blocks;
+  } else {
+    body.blocks = blocks;
+  }
 
   try {
     const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: fallback, blocks }),
+      body: JSON.stringify(body),
       signal: AbortSignal.timeout(5_000),
     });
 
@@ -93,27 +139,37 @@ function fieldBlock(label: string, value: string): SlackBlock {
 }
 
 export async function notifyNewUser(payload: NewUserPayload): Promise<void> {
-  const fallback = `:bust_in_silhouette: New user registered: ${payload.email}`;
-  const blocks: SlackBlock[] = [
+  const fallback = `:wave: New user joined: ${payload.email} (${payload.role})`;
+  const attachments: SlackAttachment[] = [
     {
-      type: "header",
-      text: {
-        type: "plain_text",
-        text: ":bust_in_silhouette: New user registered",
-        emoji: true,
-      },
-    },
-    {
-      type: "section",
-      fields: [
-        fieldBlock("Email", payload.email),
-        fieldBlock("Role", payload.role),
-        fieldBlock("Time", payload.createdAt.toISOString()),
+      color: pickRandomAccentColor(),
+      blocks: [
+        {
+          type: "section",
+          text: {
+            type: "mrkdwn",
+            text: `*:wave: New user joined*\n\`${payload.email}\`\n${formatRoleLabel(payload.role)}`,
+          },
+        },
+        {
+          type: "context",
+          elements: [
+            {
+              type: "mrkdwn",
+              text: `:clock3: ${formatSlackDateTime(payload.createdAt)}`,
+            },
+          ],
+        },
       ],
     },
   ];
 
-  await postToWebhook(env.SLACK_WEBHOOK_URL_NEW_USERS, blocks, fallback);
+  await postToWebhook(
+    env.SLACK_WEBHOOK_URL_NEW_USERS,
+    [],
+    fallback,
+    attachments
+  );
 }
 
 export async function notifySecurityAlert(
