@@ -1,0 +1,176 @@
+{
+  "en": {
+    "app": {
+      "brandName": "StockMaster",
+      "title": "Account",
+      "theme": {
+        "toLight": "Switch to light mode",
+        "toDark": "Switch to dark mode"
+      }
+    },
+    "language": {
+      "label": "Language",
+      "en": "English",
+      "he": "Hebrew"
+    },
+    "auth": {
+      "fields": {
+        "email": "Email",
+        "emailPlaceholder": "you@example.com",
+        "password": "Password",
+        "newPassword": "New password",
+        "passwordPlaceholder": "••••••••",
+        "confirmPassword": "Confirm password",
+        "showPassword": "Show password",
+        "hidePassword": "Hide password"
+      },
+      "errors": {
+        "emailRequired": "Email is required",
+        "emailInvalid": "Enter a valid email",
+        "passwordRequired": "Password is required",
+        "passwordMin": "Password must be at least 8 characters",
+        "passwordLowercase": "Password must contain a lowercase letter",
+        "passwordUppercase": "Password must contain an uppercase letter",
+        "passwordDigit": "Password must contain a digit",
+        "passwordsMismatch": "Passwords do not match",
+        "generic": "Something went wrong. Please try again."
+      },
+      "login": {
+        "title": "Sign in",
+        "subtitle": "Welcome back. Enter your details to continue.",
+        "submit": "Sign in",
+        "submitting": "Signing in…",
+        "forgotPassword": "Forgot your password?",
+        "noAccount": "Don't have an account?",
+        "registerCta": "Create one"
+      },
+      "register": {
+        "title": "Create your account",
+        "subtitle": "Sign up with your email to get started.",
+        "submit": "Create account",
+        "submitting": "Creating account…",
+        "haveAccount": "Already have an account?",
+        "loginCta": "Sign in",
+        "successTitle": "Check your inbox",
+        "successBody": "We sent a verification link to your email. Click it to activate your account."
+      },
+      "forgot": {
+        "title": "Forgot password",
+        "subtitle": "Enter the email linked to your account and we'll send a reset link.",
+        "submit": "Send reset link",
+        "submitting": "Sending…",
+        "backToLogin": "Back to sign in",
+        "successTitle": "Check your inbox",
+        "successBody": "If an account exists for this email, a password reset link has been sent."
+      },
+      "reset": {
+        "title": "Choose a new password",
+        "subtitle": "Pick a strong password you haven't used before.",
+        "submit": "Update password",
+        "submitting": "Updating…",
+        "backToLogin": "Back to sign in",
+        "successTitle": "Password updated",
+        "successBody": "Your password has been updated. You can now sign in with the new one.",
+        "errorTitle": "Reset link issue",
+        "missingToken": "This reset link is missing a token. Please request a new one."
+      },
+      "verify": {
+        "verifyingTitle": "Verifying your email",
+        "verifyingSubtitle": "One moment while we activate your account…",
+        "successTitle": "Email verified",
+        "successBody": "Your account is now active. You can sign in.",
+        "errorTitle": "Verification failed",
+        "errorBody": "This verification link is invalid or has expired.",
+        "missingToken": "The verification link is missing a token.",
+        "goToLogin": "Continue to sign in"
+      }
+    }
+  },
+  "he": {
+    "app": {
+      "brandName": "סטוקמאסטר",
+      "title": "חשבון",
+      "theme": {
+        "toLight": "מעבר למצב בהיר",
+        "toDark": "מעבר למצב כהה"
+      }
+    },
+    "language": {
+      "label": "שפה",
+      "en": "אנגלית",
+      "he": "עברית"
+    },
+    "auth": {
+      "fields": {
+        "email": "אימייל",
+        "emailPlaceholder": "you@example.com",
+        "password": "סיסמה",
+        "newPassword": "סיסמה חדשה",
+        "passwordPlaceholder": "••••••••",
+        "confirmPassword": "אימות סיסמה",
+        "showPassword": "הצגת סיסמה",
+        "hidePassword": "הסתרת סיסמה"
+      },
+      "errors": {
+        "emailRequired": "יש להזין אימייל",
+        "emailInvalid": "כתובת אימייל לא תקינה",
+        "passwordRequired": "יש להזין סיסמה",
+        "passwordMin": "הסיסמה חייבת להיות באורך של 8 תווים לפחות",
+        "passwordLowercase": "הסיסמה חייבת לכלול אות לטינית קטנה",
+        "passwordUppercase": "הסיסמה חייבת לכלול אות לטינית גדולה",
+        "passwordDigit": "הסיסמה חייבת לכלול ספרה",
+        "passwordsMismatch": "הסיסמאות אינן תואמות",
+        "generic": "משהו השתבש. נסו שוב."
+      },
+      "login": {
+        "title": "התחברות",
+        "subtitle": "ברוכים השבים. הזינו את הפרטים כדי להמשיך.",
+        "submit": "התחברות",
+        "submitting": "מתחבר…",
+        "forgotPassword": "שכחת סיסמה?",
+        "noAccount": "אין לך חשבון?",
+        "registerCta": "צור חשבון"
+      },
+      "register": {
+        "title": "יצירת חשבון",
+        "subtitle": "הירשם עם האימייל שלך כדי להתחיל.",
+        "submit": "צור חשבון",
+        "submitting": "יוצר חשבון…",
+        "haveAccount": "יש לך כבר חשבון?",
+        "loginCta": "התחברות",
+        "successTitle": "בדוק את תיבת הדואר שלך",
+        "successBody": "שלחנו קישור אימות לאימייל שלך. לחץ עליו כדי להפעיל את החשבון."
+      },
+      "forgot": {
+        "title": "שכחת סיסמה",
+        "subtitle": "הזן את האימייל המקושר לחשבונך ונשלח קישור לאיפוס.",
+        "submit": "שלח קישור איפוס",
+        "submitting": "שולח…",
+        "backToLogin": "חזרה להתחברות",
+        "successTitle": "בדוק את תיבת הדואר שלך",
+        "successBody": "אם קיים חשבון לאימייל זה, נשלח אליו קישור לאיפוס סיסמה."
+      },
+      "reset": {
+        "title": "בחירת סיסמה חדשה",
+        "subtitle": "בחר סיסמה חזקה שלא השתמשת בה בעבר.",
+        "submit": "עדכון סיסמה",
+        "submitting": "מעדכן…",
+        "backToLogin": "חזרה להתחברות",
+        "successTitle": "הסיסמה עודכנה",
+        "successBody": "הסיסמה עודכנה בהצלחה. אפשר להתחבר עם הסיסמה החדשה.",
+        "errorTitle": "בעיה בקישור האיפוס",
+        "missingToken": "חסר טוקן בקישור האיפוס. נא לבקש קישור חדש."
+      },
+      "verify": {
+        "verifyingTitle": "מאמת את כתובת האימייל שלך",
+        "verifyingSubtitle": "רגע אחד, אנחנו מפעילים את החשבון…",
+        "successTitle": "האימייל אומת",
+        "successBody": "החשבון שלך פעיל. אפשר להתחבר.",
+        "errorTitle": "האימות נכשל",
+        "errorBody": "קישור האימות אינו תקין או שתוקפו פג.",
+        "missingToken": "חסר טוקן בקישור האימות.",
+        "goToLogin": "מעבר להתחברות"
+      }
+    }
+  }
+}
