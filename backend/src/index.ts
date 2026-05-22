@@ -7,6 +7,7 @@ import { connectMongo } from "./config/db.js";
 import { attachAuth } from "./middleware/auth.js";
 import { errorHandler, notFoundHandler } from "./middleware/error.js";
 import authRoutes from "./routes/authRoutes.js";
+import productRoutes from "./routes/productRoutes.js";
 
 async function bootstrap(): Promise<void> {
   await connectMongo();
@@ -34,6 +35,7 @@ async function bootstrap(): Promise<void> {
   });
 
   app.use("/api/auth", authRoutes);
+  app.use("/api/products", productRoutes);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

@@ -1,6 +1,8 @@
 import type { NextFunction, Request, Response } from "express";
+import { MulterError } from "multer";
 import { ZodError } from "zod";
 import { AUTH_ERROR_CODES, type AuthErrorCode } from "../types/auth.js";
+import { PRODUCT_ERROR_CODES } from "../types/product.js";
 
 export class HttpError extends Error {
   status: number;
@@ -51,6 +53,15 @@ export function errorHandler(
       message: err.message,
       ...(err.details ? { details: err.details } : {}),
     });
+    return;
+  }
+
+  if (err instanceof MulterError) {
+    const code =
+      err.code === "LIMIT_FILE_SIZE"
+        ? PRODUCT_ERROR_CODES.UPLOAD_FAILED
+        : PRODUCT_ERROR_CODES.UPLOAD_FAILED;
+    res.status(400).json({ code, message: err.message });
     return;
   }
 
