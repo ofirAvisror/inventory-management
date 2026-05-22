@@ -64,8 +64,26 @@ const envSchema = z.object({
     .string()
     .url("SLACK_WEBHOOK_URL_ALERTS_SECURITY must be a valid URL")
     .optional(),
+  SLACK_WEBHOOK_URL_INVENTORY_STATUS_OPS: z
+    .string()
+    .url("SLACK_WEBHOOK_URL_INVENTORY_STATUS_OPS must be a valid URL")
+    .optional(),
+  SLACK_WEBHOOK_URL_INVENTORY_BULK_ACTIONS: z
+    .string()
+    .url("SLACK_WEBHOOK_URL_INVENTORY_BULK_ACTIONS must be a valid URL")
+    .optional(),
+  SLACK_WEBHOOK_URL_INVENTORY_AUDIT_OVERRIDE: z
+    .string()
+    .url("SLACK_WEBHOOK_URL_INVENTORY_AUDIT_OVERRIDE must be a valid URL")
+    .optional(),
   LOGIN_FAIL_THRESHOLD: z.coerce.number().int().positive().default(5),
   LOGIN_FAIL_WINDOW_MINUTES: z.coerce.number().int().positive().default(60),
+
+  CLOUDINARY_CLOUD_NAME: z.string().min(1, "CLOUDINARY_CLOUD_NAME is required"),
+  CLOUDINARY_API_KEY: z.string().min(1, "CLOUDINARY_API_KEY is required"),
+  CLOUDINARY_API_SECRET: z
+    .string()
+    .min(1, "CLOUDINARY_API_SECRET is required"),
 });
 
 const parsed = envSchema.safeParse(process.env);
