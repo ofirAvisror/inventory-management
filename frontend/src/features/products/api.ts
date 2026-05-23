@@ -64,6 +64,43 @@ export async function getProduct(id: string): Promise<PublicProduct> {
   return data.product;
 }
 
+export interface CreateProductInput {
+  name: string;
+  sku: string;
+  macAddress: string;
+  imei?: string;
+  customerId?: string;
+  status?: ProductStatusValue;
+  imageUrl?: string;
+}
+
+export async function createProduct(
+  input: CreateProductInput,
+): Promise<PublicProduct> {
+  const { data } = await api.post<{ product: PublicProduct }>(BASE, input);
+  return data.product;
+}
+
+export interface UploadImageResult {
+  url: string;
+  publicId: string;
+  width: number;
+  height: number;
+  format: string;
+  bytes: number;
+}
+
+// Axios automatically sets the multipart boundary in `Content-Type` when the
+// request body is a `FormData` instance, so we do not set it manually here.
+export async function uploadProductImage(
+  file: File,
+): Promise<UploadImageResult> {
+  const form = new FormData();
+  form.append("file", file);
+  const { data } = await api.post<UploadImageResult>(`${BASE}/upload`, form);
+  return data;
+}
+
 export async function deleteProduct(id: string): Promise<void> {
   await api.delete(`${BASE}/${id}`);
 }

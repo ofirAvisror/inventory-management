@@ -3,10 +3,14 @@ import {
   bulkChangeStatus,
   bulkDelete,
   changeStatus,
+  createProduct,
   deleteProduct,
   productKeys,
+  uploadProductImage,
   type BulkChangeStatusInput,
   type ChangeStatusInput,
+  type CreateProductInput,
+  type UploadImageResult,
 } from "../api";
 import type {
   BulkResult,
@@ -23,6 +27,22 @@ import {
 
 interface ListSnapshotCtx {
   previous: ReturnType<typeof snapshotLists>;
+}
+
+export function useCreateProductMutation() {
+  const qc = useQueryClient();
+  return useMutation<PublicProduct, unknown, CreateProductInput>({
+    mutationFn: (input) => createProduct(input),
+    onSuccess: () => {
+      void invalidateProductLists(qc);
+    },
+  });
+}
+
+export function useUploadProductImageMutation() {
+  return useMutation<UploadImageResult, unknown, File>({
+    mutationFn: (file) => uploadProductImage(file),
+  });
 }
 
 export function useDeleteProductMutation() {
