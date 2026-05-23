@@ -52,40 +52,38 @@ export function StatusChangeProductRow({
         disabled={disabled}
         aria-expanded={expanded}
         aria-label={toggleAria}
-        className="flex min-h-11 w-full flex-col gap-2 px-3 py-2.5 text-start transition hover:bg-zinc-50/80 disabled:cursor-not-allowed disabled:opacity-60 sm:flex-row sm:items-center sm:gap-3 dark:hover:bg-zinc-900/60"
+        className="flex min-h-11 w-full items-center gap-2 px-3 py-2.5 text-start transition hover:bg-zinc-50/80 disabled:cursor-not-allowed disabled:opacity-60 dark:hover:bg-zinc-900/60"
       >
-        <div className="flex min-w-0 flex-col gap-0.5 sm:flex-1 sm:flex-row sm:items-center sm:gap-3">
+        <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
           <span className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">
             {displaySku}
           </span>
-          <span className="truncate text-xs text-zinc-600 dark:text-zinc-400">
+          <span className="hidden truncate text-xs text-zinc-600 min-[360px]:inline dark:text-zinc-400">
             {displayName}
           </span>
         </div>
-        <div className="flex flex-wrap items-center justify-between gap-2 sm:shrink-0 sm:justify-end">
-          <StatusBadge status={product.status} />
-          <span
-            className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
-              isMissing
-                ? "bg-red-100 text-red-800 dark:bg-red-950/60 dark:text-red-200"
-                : "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200"
-            }`}
-          >
-            {rowLabel}
-          </span>
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-            className={`h-4 w-4 shrink-0 text-zinc-500 transition-transform ${expanded ? "rotate-180" : ""}`}
-          >
-            <path d="m6 9 6 6 6-6" />
-          </svg>
-        </div>
+        <StatusBadge status={product.status} />
+        <span
+          className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
+            isMissing
+              ? "bg-red-100 text-red-800 dark:bg-red-950/60 dark:text-red-200"
+              : "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200"
+          }`}
+        >
+          {rowLabel}
+        </span>
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+          className={`h-4 w-4 shrink-0 text-zinc-500 transition-transform ${expanded ? "rotate-180" : ""}`}
+        >
+          <path d="m6 9 6 6 6-6" />
+        </svg>
       </button>
 
       {expanded && isMissing ? (

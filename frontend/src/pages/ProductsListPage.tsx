@@ -532,16 +532,16 @@ export function ProductsListPage() {
   return (
     <AppLayout>
       <div className="flex flex-col gap-4">
-        <header className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+        <header className="flex flex-nowrap items-center justify-between gap-2 sm:gap-3">
+          <div className="min-w-0 flex-1">
+            <h1 className="truncate text-xl font-semibold tracking-tight sm:text-2xl md:text-3xl">
               {t("products.title")}
             </h1>
-            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+            <p className="mt-0.5 truncate text-xs text-zinc-600 dark:text-zinc-400 sm:mt-1 sm:text-sm">
               {t("products.subtitle")}
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex shrink-0 flex-nowrap items-center gap-1.5 sm:gap-2">
             <ExportMenu
               filterQuery={query}
               selectedProducts={selectedProducts}

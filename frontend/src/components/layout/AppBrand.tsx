@@ -13,7 +13,7 @@ export function AppBrand() {
       <img
         src={logoUrl}
         alt={t("app.brandName")}
-        className="h-12 w-auto max-w-[10rem] object-contain object-start sm:h-14 sm:max-w-[12rem]"
+        className="h-10 w-auto max-w-[7rem] object-contain object-start sm:h-14 sm:max-w-[12rem]"
       />
     </div>
   );

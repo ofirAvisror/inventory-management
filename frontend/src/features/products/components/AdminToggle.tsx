@@ -17,7 +17,7 @@ export function AdminToggle() {
 
   return (
     <label
-      className={`inline-flex h-11 select-none items-center gap-2 rounded-lg border px-3 text-sm font-medium transition ${
+      className={`inline-flex h-11 shrink-0 select-none items-center gap-2 rounded-lg border px-2 text-sm font-medium transition sm:px-3 ${
         disabled ? "cursor-default" : "cursor-pointer"
       } ${
         isEffectiveAdmin
