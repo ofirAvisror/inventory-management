@@ -20,62 +20,91 @@ export function restoreLists(qc: QueryClient, snapshot: ListSnapshot): void {
   }
 }
 
-function mutateLists(
+// Items-only mutator: rewrite the `items` array of every cached list page
+// without touching `total`/`totalPages`. Use this for in-place edits like
+// status changes that don't move items between filters in the eyes of the
+// list count (the row is still part of the list, just with a new status).
+function mutateListItems(
   qc: QueryClient,
   mutator: (items: PublicProduct[]) => PublicProduct[],
-  options?: { totalDelta?: number },
 ): void {
-  // We apply the same `totalDelta` to every cached page of the same list so
-  // that paginating between pages doesn't surface inconsistent counts. The
-  // caller is responsible for computing the global delta exactly once (e.g.
-  // how many distinct products actually exist in any cached page).
-  const totalDelta = options?.totalDelta ?? 0;
   qc.setQueriesData<ListProductsResult>(
     { queryKey: productKeys.lists() },
     (data) => {
       if (!data) return data;
       const items = mutator(data.items);
-      const itemsChanged = items !== data.items;
-      if (!itemsChanged && totalDelta === 0) return data;
-      const total = Math.max(0, data.total + totalDelta);
-      return {
-        ...data,
-        items,
-        total,
-        totalPages: Math.max(1, Math.ceil(total / data.limit)),
-      };
+      if (items === data.items) return data;
+      return { ...data, items };
     },
   );
+}
+
+// Build a stable key that identifies a "list variant" — every cached page
+// that shares the same filter+limit. We deliberately ignore `page` so that
+// removing an item visible on page 2 also corrects the count shown on
+// page 1 of the same filter. We DO keep filter+limit so that a delete in
+// `status=1` cannot bleed into the `status=2` list's totals.
+function variantKeyOf(queryKey: readonly unknown[]): string {
+  const params = queryKey[2];
+  if (params === null || typeof params !== "object") return "default";
+  const raw = params as Record<string, unknown>;
+  return JSON.stringify({
+    search: raw.search ?? "",
+    status: raw.status ?? null,
+    customerId: raw.customerId ?? "",
+    limit: raw.limit ?? null,
+  });
 }
 
 export function removeProductsFromLists(qc: QueryClient, ids: string[]): void {
   if (ids.length === 0) return;
   const idSet = new Set(ids);
-  // Count the IDs that actually exist somewhere in the cache so we don't
-  // double-count when a user deletes the same product from multiple cached
-  // pages (which shouldn't happen, but be defensive) and don't subtract for
-  // IDs that were never in the cache at all.
-  const cachedIds = new Set<string>();
-  for (const [, data] of qc.getQueriesData<ListProductsResult>({
+
+  // Snapshot once. `getQueriesData` returns plain references, so iterating
+  // twice over the same array gives us a consistent picture even though we
+  // mutate the cache in pass 2.
+  const entries = qc.getQueriesData<ListProductsResult>({
     queryKey: productKeys.lists(),
-  })) {
+  });
+
+  // Pass 1: for each variant, gather the distinct IDs from `ids` that
+  // actually exist in any of its cached pages. That count is exactly how
+  // much the variant's `total` should drop — and it stays at 0 for
+  // unrelated variants (e.g. a different status filter), so their counts
+  // are not corrupted by deletes that don't apply to them.
+  const perVariantDelta = new Map<string, Set<string>>();
+  for (const [queryKey, data] of entries) {
     if (!data) continue;
+    const key = variantKeyOf(queryKey);
+    let bucket = perVariantDelta.get(key);
+    if (!bucket) {
+      bucket = new Set<string>();
+      perVariantDelta.set(key, bucket);
+    }
     for (const item of data.items) {
-      if (idSet.has(item.id)) cachedIds.add(item.id);
+      if (idSet.has(item.id)) bucket.add(item.id);
     }
   }
-  // If we have no signal from the cache (e.g. nothing was pre-loaded yet),
-  // fall back to the requested count so the total still moves in the right
-  // direction; the next invalidate will reconcile.
-  const totalDelta = -(cachedIds.size > 0 ? cachedIds.size : ids.length);
-  mutateLists(
-    qc,
-    (items) => {
-      if (!items.some((p) => idSet.has(p.id))) return items;
-      return items.filter((p) => !idSet.has(p.id));
-    },
-    { totalDelta },
-  );
+
+  // Pass 2: for every cached page, filter items and apply that variant's
+  // shared delta to `total`/`totalPages`. All pages of the same variant
+  // therefore see the same `total`, no matter which one the user is on.
+  for (const [queryKey, data] of entries) {
+    if (!data) continue;
+    const variantDelta = perVariantDelta.get(variantKeyOf(queryKey))?.size ?? 0;
+    const hadMatch = data.items.some((p) => idSet.has(p.id));
+    const items = hadMatch
+      ? data.items.filter((p) => !idSet.has(p.id))
+      : data.items;
+    if (!hadMatch && variantDelta === 0) continue;
+    const total = Math.max(0, data.total - variantDelta);
+    qc.setQueryData<ListProductsResult>(queryKey, {
+      ...data,
+      items,
+      total,
+      totalPages: Math.max(1, Math.ceil(total / data.limit)),
+    });
+  }
 }
 
 export function setProductsStatusInLists(
@@ -86,7 +115,7 @@ export function setProductsStatusInLists(
 ): void {
   if (ids.length === 0) return;
   const idSet = new Set(ids);
-  mutateLists(qc, (items) => {
+  mutateListItems(qc, (items) => {
     let changed = false;
     const next = items.map((p) => {
       if (!idSet.has(p.id) || p.status === status) return p;
