@@ -263,7 +263,7 @@ export function StatusChangeModal({
         ) : null}
 
         {showBulkProductList ? (
-          <div className="flex max-h-[min(40vh,280px)] flex-col gap-2 overflow-y-auto pe-1 sm:max-h-64">
+          <div className="flex flex-col gap-2">
             {products.map((product) => {
               const gaps = getStatusGaps(product, status);
               const supplement = supplements[product.id] ?? emptySupplement();

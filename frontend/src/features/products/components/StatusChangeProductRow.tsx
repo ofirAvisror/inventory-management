@@ -40,7 +40,7 @@ export function StatusChangeProductRow({
 
   return (
     <div
-      className={`overflow-hidden rounded-lg border transition ${
+      className={`rounded-lg border transition ${
         isMissing
           ? "border-red-300 bg-red-50/60 dark:border-red-800 dark:bg-red-950/25"
           : "border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950"
