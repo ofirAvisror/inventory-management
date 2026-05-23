@@ -65,7 +65,12 @@ export function DeleteConfirmModal({
       size="md"
       footer={
         <>
-          <Button variant="secondary" onClick={onCancel} disabled={pending}>
+          <Button
+            variant="secondary"
+            onClick={onCancel}
+            disabled={pending}
+            className="w-full sm:w-auto"
+          >
             {t("common.cancel")}
           </Button>
           <Button
@@ -73,6 +78,7 @@ export function DeleteConfirmModal({
             onClick={onConfirm}
             loading={pending}
             disabled={disabled}
+            className="w-full sm:w-auto"
           >
             {pending
               ? t("products.deleteModal.submitting")

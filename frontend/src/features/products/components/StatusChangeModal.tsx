@@ -26,6 +26,7 @@ import {
 } from "../types";
 import { StatusBadge } from "./StatusBadge";
 import { StatusChangeProductRow } from "./StatusChangeProductRow";
+import { StatusSupplementFields } from "./StatusSupplementFields";
 
 export type StatusChangeTarget =
   | { mode: "single"; product: PublicProduct }
@@ -78,10 +79,6 @@ export function StatusChangeModal({
     setSupplements(buildInitialSupplements(products, initialStatus));
   }, [open, initialStatus, products]);
 
-  useEffect(() => {
-    if (!open) return;
-  }, [open, products, status]);
-
   const handleStatusChange = (nextStatus: ProductStatusValue) => {
     setStatus(nextStatus);
     setSupplements(buildInitialSupplements(products, nextStatus));
@@ -119,6 +116,16 @@ export function StatusChangeModal({
   const needsDetailsCount = countProductsNeedingDetails(products, status);
   const incompleteCount = countIncompleteProducts(products, status, supplements);
 
+  const isSingle = target.mode === "single";
+  const singleProduct = isSingle ? target.product : null;
+  const singleGaps = singleProduct
+    ? getStatusGaps(singleProduct, status)
+    : null;
+  const singleHasGaps = singleGaps ? hasAnyGap(singleGaps) : false;
+  const singleSupplement = singleProduct
+    ? (supplements[singleProduct.id] ?? emptySupplement())
+    : emptySupplement();
+
   const submitDisabled =
     pending ||
     !canSubmitStatusChange({
@@ -148,6 +155,9 @@ export function StatusChangeModal({
     setSupplements((current) => ({ ...current, [id]: next }));
   };
 
+  const showBulkSummary = !isSingle && needsDetailsCount > 0;
+  const showBulkProductList = !isSingle && products.length > 0;
+
   return (
     <Modal
       open={open}
@@ -156,7 +166,12 @@ export function StatusChangeModal({
       size="lg"
       footer={
         <>
-          <Button variant="secondary" onClick={onCancel} disabled={pending}>
+          <Button
+            variant="secondary"
+            onClick={onCancel}
+            disabled={pending}
+            className="w-full sm:w-auto"
+          >
             {t("common.cancel")}
           </Button>
           <Button
@@ -164,6 +179,7 @@ export function StatusChangeModal({
             onClick={handleSubmit}
             loading={pending}
             disabled={submitDisabled}
+            className="w-full sm:w-auto"
           >
             {pending
               ? t("products.statusModal.submitting")
@@ -173,7 +189,7 @@ export function StatusChangeModal({
       }
     >
       <div className="flex flex-col gap-4">
-        {target.mode === "single" && currentStatus ? (
+        {isSingle && currentStatus ? (
           <div className="flex items-center gap-2 text-sm">
             <span className="text-zinc-600 dark:text-zinc-400">
               {t("products.statusModal.currentLabel")}:
@@ -225,7 +241,19 @@ export function StatusChangeModal({
           />
         </label>
 
-        {needsDetailsCount > 0 ? (
+        {isSingle && singleProduct && singleHasGaps && singleGaps ? (
+          <StatusSupplementFields
+            productId={singleProduct.id}
+            gaps={singleGaps}
+            supplement={singleSupplement}
+            onSupplementChange={(next) =>
+              updateSupplement(singleProduct.id, next)
+            }
+            disabled={pending}
+          />
+        ) : null}
+
+        {showBulkSummary ? (
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
             {t("products.statusModal.summaryNeedsCompletion", {
               incomplete: incompleteCount,
@@ -234,29 +262,33 @@ export function StatusChangeModal({
           </p>
         ) : null}
 
-        <div className="flex max-h-64 flex-col gap-2 overflow-y-auto pe-1">
-          {products.map((product) => {
-            const gaps = getStatusGaps(product, status);
-            const supplement = supplements[product.id] ?? emptySupplement();
-            const isExpanded = expandedId === product.id;
-            return (
-              <StatusChangeProductRow
-                key={product.id}
-                product={product}
-                gaps={gaps}
-                supplement={supplement}
-                onSupplementChange={(next) => updateSupplement(product.id, next)}
-                expanded={isExpanded || (products.length === 1 && hasAnyGap(gaps))}
-                onToggle={() =>
-                  setExpandedId((current) =>
-                    current === product.id ? null : product.id,
-                  )
-                }
-                disabled={pending}
-              />
-            );
-          })}
-        </div>
+        {showBulkProductList ? (
+          <div className="flex max-h-[min(40vh,280px)] flex-col gap-2 overflow-y-auto pe-1 sm:max-h-64">
+            {products.map((product) => {
+              const gaps = getStatusGaps(product, status);
+              const supplement = supplements[product.id] ?? emptySupplement();
+              const isExpanded = expandedId === product.id;
+              return (
+                <StatusChangeProductRow
+                  key={product.id}
+                  product={product}
+                  gaps={gaps}
+                  supplement={supplement}
+                  onSupplementChange={(next) =>
+                    updateSupplement(product.id, next)
+                  }
+                  expanded={isExpanded}
+                  onToggle={() =>
+                    setExpandedId((current) =>
+                      current === product.id ? null : product.id,
+                    )
+                  }
+                  disabled={pending}
+                />
+              );
+            })}
+          </div>
+        ) : null}
 
         {target.mode === "bulk" ? (
           <Alert variant="success">{t("products.statusModal.bulkNote")}</Alert>

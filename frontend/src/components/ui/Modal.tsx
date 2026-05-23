@@ -87,7 +87,7 @@ export function Modal({
         ) : null}
         <div className="flex-1 overflow-y-auto px-5 py-4">{children}</div>
         {footer ? (
-          <footer className="flex flex-wrap items-center justify-end gap-2 border-t border-zinc-200 px-5 py-3 dark:border-zinc-800">
+          <footer className="flex flex-col-reverse gap-2 border-t border-zinc-200 px-5 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end dark:border-zinc-800">
             {footer}
           </footer>
         ) : null}
