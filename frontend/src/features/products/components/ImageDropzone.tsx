@@ -8,6 +8,7 @@ import {
   type DragEvent,
 } from "react";
 import { useTranslation } from "react-i18next";
+import { RequiredMark } from "../../../components/ui/RequiredMark";
 
 // Must stay in sync with backend's ALLOWED_IMAGE_MIME_TYPES
 // (backend/src/config/uploadLimits.ts) so the user is rejected here BEFORE
@@ -63,6 +64,7 @@ export function ImageDropzone({
   label,
   hint,
   required = false,
+  requiredTooltip,
 }: ImageDropzoneProps) {
   const { t } = useTranslation();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -151,10 +153,15 @@ export function ImageDropzone({
 
   return (
     <div className="flex flex-col gap-1.5">
-      <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+      <span className="inline-flex items-center text-sm font-medium text-zinc-700 dark:text-zinc-300">
         {label}
-        {required ? (
-          <span aria-hidden="true" className="ms-1 text-red-500">
+        {required && requiredTooltip ? (
+          <RequiredMark tooltip={requiredTooltip} />
+        ) : required ? (
+          <span
+            aria-hidden="true"
+            className="ms-0.5 text-orange-500 dark:text-orange-400"
+          >
             *
           </span>
         ) : null}

@@ -179,11 +179,9 @@ export function ProductForm({
 
             <div className="flex flex-col gap-1.5">
               <TextField
-                label={
-                  needsCustomer
-                    ? `${t("products.create.fields.customerId")} *`
-                    : t("products.create.fields.customerId")
-                }
+                label={t("products.create.fields.customerId")}
+                required={needsCustomer}
+                requiredTooltip={t("products.create.hints.customerRequired")}
                 placeholder={t("products.create.placeholders.customerId")}
                 autoComplete="off"
                 error={errors.customerId?.message}
@@ -207,6 +205,7 @@ export function ProductForm({
                   label={t("products.create.fields.image")}
                   hint={t("products.create.hints.imageRequired")}
                   required={needsImage}
+                  requiredTooltip={t("products.create.hints.imageRequired")}
                 />
               )}
             />

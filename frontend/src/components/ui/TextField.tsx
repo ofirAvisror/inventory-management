@@ -1,9 +1,12 @@
 import { forwardRef, useState, type InputHTMLAttributes } from "react";
 import { useTranslation } from "react-i18next";
+import { RequiredMark } from "./RequiredMark";
 
 type TextFieldProps = InputHTMLAttributes<HTMLInputElement> & {
   label: string;
   error?: string;
+  required?: boolean;
+  requiredTooltip?: string;
 };
 
 function EyeIcon({ closed }: { closed: boolean }) {
@@ -37,7 +40,16 @@ function EyeIcon({ closed }: { closed: boolean }) {
 
 export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(
   function TextField(
-    { label, error, id, type, className = "", ...inputProps },
+    {
+      label,
+      error,
+      id,
+      type,
+      className = "",
+      required = false,
+      requiredTooltip,
+      ...inputProps
+    },
     ref,
   ) {
     const { t } = useTranslation();
@@ -56,9 +68,19 @@ export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(
       <div className="flex flex-col gap-1.5">
         <label
           htmlFor={inputId}
-          className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
+          className="inline-flex items-center text-sm font-medium text-zinc-700 dark:text-zinc-300"
         >
           {label}
+          {required && requiredTooltip ? (
+            <RequiredMark tooltip={requiredTooltip} />
+          ) : required ? (
+            <span
+              aria-hidden="true"
+              className="ms-0.5 text-orange-500 dark:text-orange-400"
+            >
+              *
+            </span>
+          ) : null}
         </label>
         <div className="relative" dir={isPassword ? "ltr" : undefined}>
           <input
