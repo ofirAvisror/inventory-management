@@ -53,6 +53,7 @@ interface ImageDropzoneProps {
   label: string;
   hint?: string;
   required?: boolean;
+  requiredTooltip?: string;
 }
 
 export function ImageDropzone({

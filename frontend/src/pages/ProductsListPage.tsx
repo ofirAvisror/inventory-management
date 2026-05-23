@@ -29,6 +29,7 @@ import {
 import {
   findProductInLists,
   findProductsInLists,
+  invalidateProductLists,
 } from "../features/products/hooks/cacheHelpers";
 import {
   useBulkDeleteMutation,
@@ -37,10 +38,22 @@ import {
   useDeleteProductMutation,
 } from "../features/products/hooks/useProductMutations";
 import { useProductsQuery } from "../features/products/hooks/useProductsQuery";
+import {
+  updateProduct,
+  uploadProductImage,
+  type UpdateProductInput,
+} from "../features/products/api";
 import { translateProductErrorCode } from "../features/products/lib/errors";
 import { reconcileSelectionAfterBulk } from "../features/products/lib/selection";
 import {
+  getStatusGaps,
+  hasAnyGap,
+  isGapFilled,
+  type StatusChangeSubmitPayload,
+} from "../features/products/lib/statusRequirements";
+import {
   isProductStatusValue,
+  ProductStatus,
   type BulkResult,
   type ListProductsQuery,
   type ProductStatusValue,
@@ -84,6 +97,22 @@ function parseStatusParam(raw: string | null): ProductStatusValue | "" {
   return isProductStatusValue(parsed) ? parsed : "";
 }
 
+function productStubForId(id: string): PublicProduct {
+  return {
+    id,
+    name: id,
+    sku: id.slice(-8),
+    macAddress: "00:00:00:00:00:00",
+    imei: null,
+    customerId: null,
+    status: ProductStatus.StockIn,
+    statusLabel: String(ProductStatus.StockIn),
+    imageUrl: null,
+    createdAt: "",
+    updatedAt: "",
+  };
+}
+
 export function ProductsListPage() {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -119,6 +148,7 @@ export function ProductsListPage() {
     open: false,
   });
   const [statusServerError, setStatusServerError] = useState<unknown>(null);
+  const [statusPreparing, setStatusPreparing] = useState(false);
   const [deleteModal, setDeleteModal] = useState<DeleteModalState>({
     open: false,
   });
@@ -228,40 +258,88 @@ export function ProductsListPage() {
   const closeAudit = () =>
     setAuditDrawer((state) => ({ ...state, open: false }));
 
-  const submitStatusChange = (
-    targetStatus: ProductStatusValue,
-    reason: string | undefined,
+  const statusModalProducts = useMemo((): PublicProduct[] => {
+    if (!statusModal.open) return [];
+    if (statusModal.target.mode === "single") {
+      return [statusModal.target.product];
+    }
+    const found = findProductsInLists(qc, statusModal.target.ids);
+    const byId = new Map(found.map((p) => [p.id, p]));
+    return statusModal.target.ids.map((id) => byId.get(id) ?? productStubForId(id));
+  }, [statusModal, qc]);
+
+  const applySupplementsBeforeStatusChange = async (
+    productsList: PublicProduct[],
+    payload: StatusChangeSubmitPayload,
   ) => {
+    for (const product of productsList) {
+      const gaps = getStatusGaps(product, payload.status);
+      if (!hasAnyGap(gaps)) continue;
+
+      const supplement = payload.supplements[product.id];
+      if (!supplement || !isGapFilled(gaps, supplement)) {
+        throw new Error(t("products.errors.statusChangeFailed"));
+      }
+
+      let imageUrl =
+        supplement.image.url?.trim() || product.imageUrl || undefined;
+      if (supplement.image.file && !supplement.image.url) {
+        const uploaded = await uploadProductImage(supplement.image.file);
+        imageUrl = uploaded.url;
+      }
+
+      const body: UpdateProductInput = {};
+      if (gaps.needsCustomer) {
+        body.customerId = supplement.customerId.trim();
+      }
+      if (gaps.needsImage && imageUrl) {
+        body.imageUrl = imageUrl;
+      }
+      if (Object.keys(body).length > 0) {
+        await updateProduct(product.id, body);
+      }
+    }
+  };
+
+  const submitStatusChange = async (payload: StatusChangeSubmitPayload) => {
     if (!statusModal.open) return;
     const target = statusModal.target;
     setStatusServerError(null);
+    setStatusPreparing(true);
 
-    if (target.mode === "single") {
-      const product = target.product;
-      changeStatusOne.mutate(
-        {
-          id: product.id,
-          status: targetStatus,
-          reason,
-          previousStatus: product.status,
-          previousStatusLabel: product.statusLabel,
-        },
-        {
-          onSuccess: () => {
-            toast({
-              variant: "success",
-              title: t("products.success.statusChanged"),
-            });
-            closeStatusModal();
+    try {
+      await applySupplementsBeforeStatusChange(statusModalProducts, payload);
+      await invalidateProductLists(qc);
+
+      if (target.mode === "single") {
+        const product = target.product;
+        changeStatusOne.mutate(
+          {
+            id: product.id,
+            status: payload.status,
+            reason: payload.reason,
+            previousStatus: product.status,
+            previousStatusLabel: product.statusLabel,
           },
-          onError: (error) => setStatusServerError(error),
-        },
-      );
-    } else {
+          {
+            onSuccess: () => {
+              toast({
+                variant: "success",
+                title: t("products.success.statusChanged"),
+              });
+              closeStatusModal();
+            },
+            onError: (error) => setStatusServerError(error),
+            onSettled: () => setStatusPreparing(false),
+          },
+        );
+        return;
+      }
+
       const ids = target.ids;
       const participants = findProductsInLists(qc, ids);
       bulkStatus.mutate(
-        { ids, status: targetStatus, reason },
+        { ids, status: payload.status, reason: payload.reason },
         {
           onSuccess: (result) => {
             handleBulkResult({
@@ -276,8 +354,12 @@ export function ProductsListPage() {
             closeStatusModal();
           },
           onError: (error) => setStatusServerError(error),
+          onSettled: () => setStatusPreparing(false),
         },
       );
+    } catch (error) {
+      setStatusServerError(error);
+      setStatusPreparing(false);
     }
   };
 
@@ -432,6 +514,7 @@ export function ProductsListPage() {
 
   const statusModalTarget = statusModal.open ? statusModal.target : null;
   const statusPending =
+    statusPreparing ||
     (statusModalTarget?.mode === "single" && changeStatusOne.isPending) ||
     (statusModalTarget?.mode === "bulk" && bulkStatus.isPending);
 
@@ -517,6 +600,7 @@ export function ProductsListPage() {
       <StatusChangeModal
         open={statusModal.open}
         target={statusModalTarget}
+        products={statusModalProducts}
         pending={statusPending}
         serverError={statusServerError}
         onCancel={closeStatusModal}

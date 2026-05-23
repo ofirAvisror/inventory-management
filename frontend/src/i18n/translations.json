@@ -247,6 +247,11 @@
         "submit": "Apply",
         "submitting": "Applying…",
         "noChange": "Pick a different status to continue.",
+        "summaryNeedsCompletion": "{{incomplete}} of {{total}} products still need details before you can apply.",
+        "rowOk": "Ready",
+        "rowMissing": "Missing details",
+        "expandRow": "Show required fields for {{name}}",
+        "collapseRow": "Hide required fields for {{name}}",
         "warnings": {
           "customerMissing": "Status 2 and above requires a customer ID. This product does not have one yet — edit the product first.",
           "imageMissing": "Status 4 and above requires an image. This product does not have one yet — edit the product first.",
@@ -579,6 +584,11 @@
         "submit": "אישור",
         "submitting": "מבצע…",
         "noChange": "יש לבחור סטטוס שונה כדי להמשיך.",
+        "summaryNeedsCompletion": "{{incomplete}} מתוך {{total}} מוצרים עדיין דורשים השלמה לפני האישור.",
+        "rowOk": "מוכן",
+        "rowMissing": "חסרים פרטים",
+        "expandRow": "הצגת שדות חובה עבור {{name}}",
+        "collapseRow": "הסתרת שדות חובה עבור {{name}}",
         "warnings": {
           "customerMissing": "סטטוס 2 ומעלה דורש מזהה לקוח. במוצר הזה עוד אין — יש לערוך אותו קודם.",
           "imageMissing": "סטטוס 4 ומעלה דורש תמונה. במוצר הזה עוד אין — יש לערוך אותו קודם.",

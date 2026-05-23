@@ -101,6 +101,22 @@ export async function uploadProductImage(
   return data;
 }
 
+export interface UpdateProductInput {
+  customerId?: string;
+  imageUrl?: string;
+}
+
+export async function updateProduct(
+  id: string,
+  input: UpdateProductInput,
+): Promise<PublicProduct> {
+  const { data } = await api.put<{ product: PublicProduct }>(
+    `${BASE}/${id}`,
+    input,
+  );
+  return data.product;
+}
+
 export async function deleteProduct(id: string): Promise<void> {
   await api.delete(`${BASE}/${id}`);
 }

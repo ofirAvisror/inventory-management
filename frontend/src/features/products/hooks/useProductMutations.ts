@@ -6,10 +6,12 @@ import {
   createProduct,
   deleteProduct,
   productKeys,
+  updateProduct,
   uploadProductImage,
   type BulkChangeStatusInput,
   type ChangeStatusInput,
   type CreateProductInput,
+  type UpdateProductInput,
   type UploadImageResult,
 } from "../api";
 import type {
@@ -42,6 +44,20 @@ export function useCreateProductMutation() {
 export function useUploadProductImageMutation() {
   return useMutation<UploadImageResult, unknown, File>({
     mutationFn: (file) => uploadProductImage(file),
+  });
+}
+
+export function useUpdateProductMutation() {
+  const qc = useQueryClient();
+  return useMutation<
+    PublicProduct,
+    unknown,
+    { id: string; input: UpdateProductInput }
+  >({
+    mutationFn: ({ id, input }) => updateProduct(id, input),
+    onSuccess: () => {
+      void invalidateProductLists(qc);
+    },
   });
 }
 
