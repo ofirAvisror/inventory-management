@@ -1,18 +1,33 @@
-import { useId, type ReactNode } from "react";
+import {
+  Children,
+  cloneElement,
+  isValidElement,
+  useId,
+  type ReactElement,
+  type ReactNode,
+} from "react";
 
 type TooltipProps = {
   content: string;
   children: ReactNode;
 };
 
+// Clone the single child so `aria-describedby` lands on the actual focusable
+// trigger element (e.g. RequiredMark's `<span tabIndex={0}>`). Putting it on
+// an outer wrapper means screen readers won't announce the description when
+// focus moves to the trigger.
 export function Tooltip({ content, children }: TooltipProps) {
   const tooltipId = useId();
+  const child = Children.only(children);
+  const trigger = isValidElement(child)
+    ? cloneElement(child as ReactElement<{ "aria-describedby"?: string }>, {
+        "aria-describedby": tooltipId,
+      })
+    : child;
 
   return (
     <span className="group/tooltip relative inline-flex align-middle">
-      <span aria-describedby={tooltipId} className="inline-flex">
-        {children}
-      </span>
+      {trigger}
       <span
         id={tooltipId}
         role="tooltip"

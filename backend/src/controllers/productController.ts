@@ -123,7 +123,12 @@ export async function changeStatusHandler(
     const body = req.body as ChangeStatusInput;
     const product = await changeStatus(
       id,
-      { status: body.status as ProductStatusValue, reason: body.reason },
+      {
+        status: body.status as ProductStatusValue,
+        reason: body.reason,
+        customerId: body.customerId,
+        imageUrl: body.imageUrl,
+      },
       actorContext(req, body.reason)
     );
     res.json({ product });
@@ -157,7 +162,8 @@ export async function bulkStatusHandler(
       body.ids,
       body.status as ProductStatusValue,
       actorContext(req, body.reason),
-      body.reason
+      body.reason,
+      body.supplements
     );
     res.json(result);
   } catch (err) {

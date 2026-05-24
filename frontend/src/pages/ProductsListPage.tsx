@@ -29,7 +29,6 @@ import {
 import {
   findProductInLists,
   findProductsInLists,
-  invalidateProductLists,
 } from "../features/products/hooks/cacheHelpers";
 import {
   useBulkDeleteMutation,
@@ -39,9 +38,8 @@ import {
 } from "../features/products/hooks/useProductMutations";
 import { useProductsQuery } from "../features/products/hooks/useProductsQuery";
 import {
-  updateProduct,
   uploadProductImage,
-  type UpdateProductInput,
+  type BulkStatusSupplement,
 } from "../features/products/api";
 import { translateProductErrorCode } from "../features/products/lib/errors";
 import { reconcileSelectionAfterBulk } from "../features/products/lib/selection";
@@ -49,11 +47,14 @@ import {
   getStatusGaps,
   hasAnyGap,
   isGapFilled,
+  type ProductSupplement,
   type StatusChangeSubmitPayload,
 } from "../features/products/lib/statusRequirements";
 import {
   isProductStatusValue,
+  PRODUCT_ERROR_CODES,
   ProductStatus,
+  type BulkFailureItem,
   type BulkResult,
   type ListProductsQuery,
   type ProductStatusValue,
@@ -268,37 +269,65 @@ export function ProductsListPage() {
     return statusModal.target.ids.map((id) => byId.get(id) ?? productStubForId(id));
   }, [statusModal, qc]);
 
-  const applySupplementsBeforeStatusChange = async (
+  // Uploads any pending image files for products that have gaps for the target
+  // status. The status mutation is the atomic boundary: customerId / imageUrl
+  // are persisted on the server only if the status change succeeds. Upload
+  // failures are returned per product so the bulk result can surface them next
+  // to backend failures without breaking the rest of the batch.
+  const preparePerProductSupplements = async (
     productsList: PublicProduct[],
     payload: StatusChangeSubmitPayload,
-  ) => {
+  ): Promise<{
+    supplementsById: Record<string, BulkStatusSupplement>;
+    uploadFailures: BulkFailureItem[];
+  }> => {
+    const supplementsById: Record<string, BulkStatusSupplement> = {};
+    const uploadFailures: BulkFailureItem[] = [];
+
     for (const product of productsList) {
       const gaps = getStatusGaps(product, payload.status);
       if (!hasAnyGap(gaps)) continue;
 
-      const supplement = payload.supplements[product.id];
+      const supplement: ProductSupplement | undefined =
+        payload.supplements[product.id];
       if (!supplement || !isGapFilled(gaps, supplement)) {
-        throw new Error(t("products.errors.statusChangeFailed"));
+        uploadFailures.push({
+          id: product.id,
+          code: gaps.needsImage
+            ? PRODUCT_ERROR_CODES.IMAGE_REQUIRED
+            : PRODUCT_ERROR_CODES.CUSTOMER_REQUIRED,
+          message: t("products.errors.statusChangeFailed"),
+        });
+        continue;
       }
 
-      let imageUrl =
+      let imageUrl: string | undefined =
         supplement.image.url?.trim() || product.imageUrl || undefined;
-      if (supplement.image.file && !supplement.image.url) {
-        const uploaded = await uploadProductImage(supplement.image.file);
-        imageUrl = uploaded.url;
+      if (gaps.needsImage && supplement.image.file && !supplement.image.url) {
+        try {
+          const uploaded = await uploadProductImage(supplement.image.file);
+          imageUrl = uploaded.url;
+        } catch (error) {
+          const apiError = toApiError(
+            error,
+            t("products.errors.statusChangeFailed"),
+          );
+          uploadFailures.push({
+            id: product.id,
+            code: apiError.code || PRODUCT_ERROR_CODES.UPLOAD_FAILED,
+            message: apiError.message,
+          });
+          continue;
+        }
       }
 
-      const body: UpdateProductInput = {};
-      if (gaps.needsCustomer) {
-        body.customerId = supplement.customerId.trim();
-      }
-      if (gaps.needsImage && imageUrl) {
-        body.imageUrl = imageUrl;
-      }
-      if (Object.keys(body).length > 0) {
-        await updateProduct(product.id, body);
-      }
+      const entry: BulkStatusSupplement = {};
+      if (gaps.needsCustomer) entry.customerId = supplement.customerId.trim();
+      if (gaps.needsImage && imageUrl) entry.imageUrl = imageUrl;
+      if (Object.keys(entry).length > 0) supplementsById[product.id] = entry;
     }
+
+    return { supplementsById, uploadFailures };
   };
 
   const submitStatusChange = async (payload: StatusChangeSubmitPayload) => {
@@ -308,16 +337,31 @@ export function ProductsListPage() {
     setStatusPreparing(true);
 
     try {
-      await applySupplementsBeforeStatusChange(statusModalProducts, payload);
-      await invalidateProductLists(qc);
+      const { supplementsById, uploadFailures } =
+        await preparePerProductSupplements(statusModalProducts, payload);
 
       if (target.mode === "single") {
         const product = target.product;
+        if (uploadFailures.length > 0) {
+          // Single-product flow has no partial result to show; surface the
+          // upload failure as a normal modal error.
+          const first = uploadFailures[0];
+          setStatusServerError(
+            new Error(
+              translateProductErrorCode(first.code, first.message, t),
+            ),
+          );
+          setStatusPreparing(false);
+          return;
+        }
+        const supplement = supplementsById[product.id];
         changeStatusOne.mutate(
           {
             id: product.id,
             status: payload.status,
             reason: payload.reason,
+            customerId: supplement?.customerId,
+            imageUrl: supplement?.imageUrl,
             previousStatus: product.status,
             previousStatusLabel: product.statusLabel,
           },
@@ -338,17 +382,44 @@ export function ProductsListPage() {
 
       const ids = target.ids;
       const participants = findProductsInLists(qc, ids);
+      const failedIdSet = new Set(uploadFailures.map((f) => f.id));
+      const idsToSend = ids.filter((id) => !failedIdSet.has(id));
+
+      if (idsToSend.length === 0) {
+        // Every product hit an upload error before we even called the API;
+        // show the partial-result modal so the user can see what blew up.
+        handleBulkResult({
+          action: "status",
+          ids,
+          participants,
+          result: { success: [], failed: uploadFailures },
+          successMessage: t("products.success.bulkStatusChanged", { count: 0 }),
+        });
+        closeStatusModal();
+        setStatusPreparing(false);
+        return;
+      }
+
       bulkStatus.mutate(
-        { ids, status: payload.status, reason: payload.reason },
+        {
+          ids: idsToSend,
+          status: payload.status,
+          reason: payload.reason,
+          supplements: supplementsById,
+        },
         {
           onSuccess: (result) => {
+            const merged: BulkResult = {
+              success: result.success,
+              failed: [...uploadFailures, ...result.failed],
+            };
             handleBulkResult({
               action: "status",
               ids,
               participants,
-              result,
+              result: merged,
               successMessage: t("products.success.bulkStatusChanged", {
-                count: result.success.length,
+                count: merged.success.length,
               }),
             });
             closeStatusModal();

@@ -92,6 +92,8 @@ export const updateProductSchema = z
 export const changeStatusSchema = z.object({
   status: statusSchema,
   reason: z.string().trim().max(500).optional(),
+  customerId: customerIdSchema.optional(),
+  imageUrl: imageUrlSchema.optional(),
 });
 
 export const bulkIdsSchema = z.object({
@@ -101,6 +103,11 @@ export const bulkIdsSchema = z.object({
     .max(200, "Too many ids in one request"),
 });
 
+const bulkStatusItemSchema = z.object({
+  customerId: customerIdSchema.optional(),
+  imageUrl: imageUrlSchema.optional(),
+});
+
 export const bulkStatusSchema = z.object({
   ids: z
     .array(objectIdSchema)
@@ -108,6 +115,10 @@ export const bulkStatusSchema = z.object({
     .max(200, "Too many ids in one request"),
   status: statusSchema,
   reason: z.string().trim().max(500).optional(),
+  // Optional per-id supplements applied inside the same transaction as the
+  // status change. Keys must be valid product ids; entries for ids not in
+  // `ids` are ignored by the service.
+  supplements: z.record(objectIdSchema, bulkStatusItemSchema).optional(),
 });
 
 export const listQuerySchema = z.object({

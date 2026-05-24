@@ -129,6 +129,11 @@ export async function bulkDelete(ids: string[]): Promise<BulkResult> {
 export interface ChangeStatusInput {
   status: ProductStatusValue;
   reason?: string;
+  // Optional supplements applied atomically with the status change on the
+  // server. Use these instead of a separate PUT when a status transition
+  // requires customer/image data the product does not yet have.
+  customerId?: string;
+  imageUrl?: string;
 }
 
 export async function changeStatus(
@@ -142,10 +147,17 @@ export async function changeStatus(
   return data.product;
 }
 
+export interface BulkStatusSupplement {
+  customerId?: string;
+  imageUrl?: string;
+}
+
 export interface BulkChangeStatusInput {
   ids: string[];
   status: ProductStatusValue;
   reason?: string;
+  // Per-id supplements; ids not present here get no supplement.
+  supplements?: Record<string, BulkStatusSupplement>;
 }
 
 export async function bulkChangeStatus(
