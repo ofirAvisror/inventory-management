@@ -1,13 +1,23 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router-dom";
 import { Alert } from "../../../components/ui/Alert";
 import { Button } from "../../../components/ui/Button";
 import { Modal } from "../../../components/ui/Modal";
 import { useAdmin } from "../../../contexts/AdminContext";
 import { toApiError } from "../../../lib/api";
-import { paths } from "../../../routes/paths";
 import { translateProductErrorCode } from "../lib/errors";
+import {
+  buildInitialSupplements,
+  canSubmitStatusChange,
+  countIncompleteProducts,
+  countProductsNeedingDetails,
+  emptySupplement,
+  getStatusGaps,
+  hasAnyGap,
+  isDemotionBlocked,
+  type ProductSupplement,
+  type StatusChangeSubmitPayload,
+} from "../lib/statusRequirements";
 import {
   PRODUCT_STATUS_VALUES,
   ProductStatus,
@@ -15,6 +25,8 @@ import {
   type PublicProduct,
 } from "../types";
 import { StatusBadge } from "./StatusBadge";
+import { StatusChangeProductRow } from "./StatusChangeProductRow";
+import { StatusSupplementFields } from "./StatusSupplementFields";
 
 export type StatusChangeTarget =
   | { mode: "single"; product: PublicProduct }
@@ -23,15 +35,17 @@ export type StatusChangeTarget =
 type StatusChangeModalProps = {
   open: boolean;
   target: StatusChangeTarget | null;
+  products: PublicProduct[];
   pending: boolean;
   serverError: unknown | null;
   onCancel: () => void;
-  onSubmit: (status: ProductStatusValue, reason: string | undefined) => void;
+  onSubmit: (payload: StatusChangeSubmitPayload) => void;
 };
 
 export function StatusChangeModal({
   open,
   target,
+  products,
   pending,
   serverError,
   onCancel,
@@ -51,14 +65,29 @@ export function StatusChangeModal({
 
   const [status, setStatus] = useState<ProductStatusValue>(initialStatus);
   const [reason, setReason] = useState("");
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [supplements, setSupplements] = useState<
+    Record<string, ProductSupplement>
+  >({});
 
   useEffect(() => {
-    if (open) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setStatus(initialStatus);
-      setReason("");
-    }
-  }, [open, initialStatus]);
+    if (!open) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setStatus(initialStatus);
+    setReason("");
+    setExpandedId(null);
+    setSupplements(buildInitialSupplements(products, initialStatus));
+  }, [open, initialStatus, products]);
+
+  const handleStatusChange = (nextStatus: ProductStatusValue) => {
+    setStatus(nextStatus);
+    setSupplements(buildInitialSupplements(products, nextStatus));
+    const firstIncomplete = products.find((p) => {
+      const gaps = getStatusGaps(p, nextStatus);
+      return hasAnyGap(gaps);
+    });
+    setExpandedId(firstIncomplete?.id ?? null);
+  };
 
   if (!target) {
     return (
@@ -78,12 +107,34 @@ export function StatusChangeModal({
   const isNoChange =
     target.mode === "single" && currentStatus === status;
 
-  const warnings = collectWarnings({
-    mode: target.mode,
-    product: target.mode === "single" ? target.product : null,
-    targetStatus: status,
+  const demotionBlocked = isDemotionBlocked(
+    products,
+    status,
     isEffectiveAdmin,
-  });
+  );
+
+  const needsDetailsCount = countProductsNeedingDetails(products, status);
+  const incompleteCount = countIncompleteProducts(products, status, supplements);
+
+  const isSingle = target.mode === "single";
+  const singleProduct = isSingle ? target.product : null;
+  const singleGaps = singleProduct
+    ? getStatusGaps(singleProduct, status)
+    : null;
+  const singleHasGaps = singleGaps ? hasAnyGap(singleGaps) : false;
+  const singleSupplement = singleProduct
+    ? (supplements[singleProduct.id] ?? emptySupplement())
+    : emptySupplement();
+
+  const submitDisabled =
+    pending ||
+    !canSubmitStatusChange({
+      products,
+      targetStatus: status,
+      supplements,
+      isNoChange,
+      demotionBlocked,
+    });
 
   const apiError = serverError
     ? toApiError(serverError, t("products.errors.statusChangeFailed"))
@@ -92,24 +143,43 @@ export function StatusChangeModal({
     ? translateProductErrorCode(apiError.code, apiError.message, t)
     : null;
 
-  const submitDisabled = pending || isNoChange;
+  const handleSubmit = () => {
+    onSubmit({
+      status,
+      reason: reason.trim() || undefined,
+      supplements,
+    });
+  };
+
+  const updateSupplement = (id: string, next: ProductSupplement) => {
+    setSupplements((current) => ({ ...current, [id]: next }));
+  };
+
+  const showBulkSummary = !isSingle && needsDetailsCount > 0;
+  const showBulkProductList = !isSingle && products.length > 0;
 
   return (
     <Modal
       open={open}
       onClose={pending ? () => undefined : onCancel}
       title={title}
-      size="md"
+      size="lg"
       footer={
         <>
-          <Button variant="secondary" onClick={onCancel} disabled={pending}>
+          <Button
+            variant="secondary"
+            onClick={onCancel}
+            disabled={pending}
+            className="w-full sm:w-auto"
+          >
             {t("common.cancel")}
           </Button>
           <Button
             variant="primary"
-            onClick={() => onSubmit(status, reason.trim() || undefined)}
+            onClick={handleSubmit}
             loading={pending}
             disabled={submitDisabled}
+            className="w-full sm:w-auto"
           >
             {pending
               ? t("products.statusModal.submitting")
@@ -119,7 +189,7 @@ export function StatusChangeModal({
       }
     >
       <div className="flex flex-col gap-4">
-        {target.mode === "single" && currentStatus ? (
+        {isSingle && currentStatus ? (
           <div className="flex items-center gap-2 text-sm">
             <span className="text-zinc-600 dark:text-zinc-400">
               {t("products.statusModal.currentLabel")}:
@@ -135,8 +205,11 @@ export function StatusChangeModal({
           <select
             value={status}
             onChange={(event) =>
-              setStatus(Number(event.target.value) as ProductStatusValue)
+              handleStatusChange(
+                Number(event.target.value) as ProductStatusValue,
+              )
             }
+            disabled={pending}
             className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2.5 text-sm shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-500/30 dark:border-zinc-700 dark:bg-zinc-950"
           >
             {PRODUCT_STATUS_VALUES.map((s) => (
@@ -162,30 +235,70 @@ export function StatusChangeModal({
             onChange={(event) => setReason(event.target.value)}
             rows={3}
             maxLength={500}
+            disabled={pending}
             placeholder={t("products.statusModal.reasonPlaceholder")}
             className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-500/30 dark:border-zinc-700 dark:bg-zinc-950"
           />
         </label>
 
+        {isSingle && singleProduct && singleHasGaps && singleGaps ? (
+          <StatusSupplementFields
+            productId={singleProduct.id}
+            gaps={singleGaps}
+            supplement={singleSupplement}
+            onSupplementChange={(next) =>
+              updateSupplement(singleProduct.id, next)
+            }
+            disabled={pending}
+          />
+        ) : null}
+
+        {showBulkSummary ? (
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            {t("products.statusModal.summaryNeedsCompletion", {
+              incomplete: incompleteCount,
+              total: needsDetailsCount,
+            })}
+          </p>
+        ) : null}
+
+        {showBulkProductList ? (
+          <div className="flex flex-col gap-2">
+            {products.map((product) => {
+              const gaps = getStatusGaps(product, status);
+              const supplement = supplements[product.id] ?? emptySupplement();
+              const isExpanded = expandedId === product.id;
+              return (
+                <StatusChangeProductRow
+                  key={product.id}
+                  product={product}
+                  gaps={gaps}
+                  supplement={supplement}
+                  onSupplementChange={(next) =>
+                    updateSupplement(product.id, next)
+                  }
+                  expanded={isExpanded}
+                  onToggle={() =>
+                    setExpandedId((current) =>
+                      current === product.id ? null : product.id,
+                    )
+                  }
+                  disabled={pending}
+                />
+              );
+            })}
+          </div>
+        ) : null}
+
         {target.mode === "bulk" ? (
           <Alert variant="success">{t("products.statusModal.bulkNote")}</Alert>
         ) : null}
 
-        {warnings.map((warning) => (
-          <Alert key={warning.kind} variant="error" title={t("common.error")}>
-            <div className="flex flex-col gap-1">
-              <span>{t(`products.statusModal.warnings.${warning.kind}`)}</span>
-              {warning.linkTo ? (
-                <Link
-                  to={warning.linkTo}
-                  className="text-xs font-medium underline-offset-2 hover:underline"
-                >
-                  {t("products.statusModal.editProductCta")}
-                </Link>
-              ) : null}
-            </div>
+        {demotionBlocked ? (
+          <Alert variant="error" title={t("common.error")}>
+            {t("products.statusModal.warnings.demotion")}
           </Alert>
-        ))}
+        ) : null}
 
         {errorMessage ? (
           <Alert variant="error" title={t("common.error")}>
@@ -195,58 +308,4 @@ export function StatusChangeModal({
       </div>
     </Modal>
   );
-}
-
-type Warning = {
-  kind: "customerMissing" | "imageMissing" | "demotion";
-  linkTo?: string;
-};
-
-function collectWarnings(input: {
-  mode: "single" | "bulk";
-  product: PublicProduct | null;
-  targetStatus: ProductStatusValue;
-  isEffectiveAdmin: boolean;
-}): Warning[] {
-  const out: Warning[] = [];
-  const { mode, product, targetStatus, isEffectiveAdmin } = input;
-
-  if (mode === "single" && product) {
-    if (
-      targetStatus >= ProductStatus.AssignedToCustomer &&
-      !product.customerId
-    ) {
-      out.push({
-        kind: "customerMissing",
-        linkTo: paths.productDetail(product.id),
-      });
-    }
-    if (
-      targetStatus >= ProductStatus.ReadyForDelivery &&
-      !product.imageUrl
-    ) {
-      out.push({
-        kind: "imageMissing",
-        linkTo: paths.productDetail(product.id),
-      });
-    }
-    if (
-      product.status === ProductStatus.Delivered &&
-      targetStatus < ProductStatus.Delivered &&
-      !isEffectiveAdmin
-    ) {
-      out.push({ kind: "demotion" });
-    }
-  } else if (mode === "bulk") {
-    if (
-      targetStatus < ProductStatus.Delivered &&
-      targetStatus !== ProductStatus.Delivered &&
-      !isEffectiveAdmin
-    ) {
-      // Cannot know upfront, but warn the operator that mixed batches with
-      // currently-Delivered items will need admin.
-    }
-  }
-
-  return out;
 }

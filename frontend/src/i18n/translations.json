@@ -124,6 +124,64 @@
         "body": "This screen is not implemented yet. The products table page is the focus of this iteration.",
         "back": "Back to products"
       },
+      "create": {
+        "title": "Create product",
+        "subtitle": "Add a new item to your inventory.",
+        "back": "← Back to products",
+        "submit": "Create product",
+        "submitting": "Creating…",
+        "cancel": "Cancel",
+        "fields": {
+          "name": "Name",
+          "sku": "SKU",
+          "macAddress": "MAC address",
+          "imei": "IMEI",
+          "status": "Initial status",
+          "customerId": "Customer ID",
+          "image": "Product image"
+        },
+        "placeholders": {
+          "name": "e.g. Router XR500",
+          "sku": "e.g. RTR-XR500-01",
+          "macAddress": "AA:BB:CC:DD:EE:FF",
+          "imei": "14 or 15 digits",
+          "customerId": "Customer identifier"
+        },
+        "hints": {
+          "skuUpper": "SKU will be saved in uppercase.",
+          "macFormat": "Format: AA:BB:CC:DD:EE:FF (separators ':' or '-').",
+          "customerRequired": "Required when status is \"Assigned to Customer\" or higher.",
+          "imageRequired": "Required when status is \"Ready for Delivery\" or higher."
+        },
+        "advanced": {
+          "toggleShow": "Advanced options (status, customer, image)",
+          "toggleHide": "Hide advanced options"
+        },
+        "image": {
+          "drop": "Drop an image here, or click to browse.",
+          "browse": "Choose file",
+          "replace": "Replace",
+          "remove": "Remove",
+          "uploading": "Uploading…",
+          "uploaded": "Image ready",
+          "tooLarge": "Image is too large (max {{max}} MB).",
+          "badType": "Unsupported file type. Use PNG, JPG, WEBP or GIF."
+        },
+        "errors": {
+          "nameRequired": "Name is required.",
+          "nameTooLong": "Name is too long (max 120 characters).",
+          "skuRequired": "SKU is required.",
+          "skuTooLong": "SKU is too long (max 64 characters).",
+          "macRequired": "MAC address is required.",
+          "customerIdTooLong": "Customer ID is too long (max 120 characters).",
+          "imageUrlInvalid": "The image URL is not valid.",
+          "submitFailed": "Could not create the product."
+        },
+        "success": {
+          "title": "Product created",
+          "description": "\"{{name}}\" was added to your inventory."
+        }
+      },
       "status": {
         "1": "Stock In",
         "2": "Assigned to Customer",
@@ -189,6 +247,11 @@
         "submit": "Apply",
         "submitting": "Applying…",
         "noChange": "Pick a different status to continue.",
+        "summaryNeedsCompletion": "{{incomplete}} of {{total}} products still need details before you can apply.",
+        "rowOk": "Ready",
+        "rowMissing": "Missing details",
+        "expandRow": "Show required fields for {{name}}",
+        "collapseRow": "Hide required fields for {{name}}",
         "warnings": {
           "customerMissing": "Status 2 and above requires a customer ID. This product does not have one yet — edit the product first.",
           "imageMissing": "Status 4 and above requires an image. This product does not have one yet — edit the product first.",
@@ -398,6 +461,64 @@
         "body": "המסך הזה עוד לא מומש. במחזור הנוכחי התמקדנו בעמוד טבלת המוצרים.",
         "back": "חזרה למוצרים"
       },
+      "create": {
+        "title": "מוצר חדש",
+        "subtitle": "הוספת פריט חדש למלאי.",
+        "back": "→ חזרה למוצרים",
+        "submit": "צור מוצר",
+        "submitting": "יוצר…",
+        "cancel": "ביטול",
+        "fields": {
+          "name": "שם",
+          "sku": "מק\"ט",
+          "macAddress": "כתובת MAC",
+          "imei": "IMEI",
+          "status": "סטטוס התחלתי",
+          "customerId": "מזהה לקוח",
+          "image": "תמונת מוצר"
+        },
+        "placeholders": {
+          "name": "לדוגמה: ראוטר XR500",
+          "sku": "לדוגמה: RTR-XR500-01",
+          "macAddress": "AA:BB:CC:DD:EE:FF",
+          "imei": "14 או 15 ספרות",
+          "customerId": "מזהה לקוח"
+        },
+        "hints": {
+          "skuUpper": "המק\"ט יישמר באותיות גדולות.",
+          "macFormat": "פורמט: AA:BB:CC:DD:EE:FF (מפריד ':' או '-').",
+          "customerRequired": "נדרש כאשר הסטטוס הוא \"שויך ללקוח\" ומעלה.",
+          "imageRequired": "נדרש כאשר הסטטוס הוא \"מוכן למשלוח\" ומעלה."
+        },
+        "advanced": {
+          "toggleShow": "אפשרויות מתקדמות (סטטוס, לקוח, תמונה)",
+          "toggleHide": "הסתרת אפשרויות מתקדמות"
+        },
+        "image": {
+          "drop": "גררו תמונה לכאן, או לחצו לבחירת קובץ.",
+          "browse": "בחירת קובץ",
+          "replace": "החלפה",
+          "remove": "הסרה",
+          "uploading": "מעלה…",
+          "uploaded": "התמונה מוכנה",
+          "tooLarge": "התמונה גדולה מדי (מקסימום {{max}} מ\"ב).",
+          "badType": "סוג קובץ לא נתמך. השתמשו ב-PNG, JPG, WEBP או GIF."
+        },
+        "errors": {
+          "nameRequired": "יש להזין שם.",
+          "nameTooLong": "השם ארוך מדי (מקסימום 120 תווים).",
+          "skuRequired": "יש להזין מק\"ט.",
+          "skuTooLong": "המק\"ט ארוך מדי (מקסימום 64 תווים).",
+          "macRequired": "יש להזין כתובת MAC.",
+          "customerIdTooLong": "מזהה הלקוח ארוך מדי (מקסימום 120 תווים).",
+          "imageUrlInvalid": "כתובת התמונה אינה תקינה.",
+          "submitFailed": "יצירת המוצר נכשלה."
+        },
+        "success": {
+          "title": "המוצר נוצר",
+          "description": "\"{{name}}\" נוסף למלאי."
+        }
+      },
       "status": {
         "1": "במלאי",
         "2": "שויך ללקוח",
@@ -463,6 +584,11 @@
         "submit": "אישור",
         "submitting": "מבצע…",
         "noChange": "יש לבחור סטטוס שונה כדי להמשיך.",
+        "summaryNeedsCompletion": "{{incomplete}} מתוך {{total}} מוצרים עדיין דורשים השלמה לפני האישור.",
+        "rowOk": "מוכן",
+        "rowMissing": "חסרים פרטים",
+        "expandRow": "הצגת שדות חובה עבור {{name}}",
+        "collapseRow": "הסתרת שדות חובה עבור {{name}}",
         "warnings": {
           "customerMissing": "סטטוס 2 ומעלה דורש מזהה לקוח. במוצר הזה עוד אין — יש לערוך אותו קודם.",
           "imageMissing": "סטטוס 4 ומעלה דורש תמונה. במוצר הזה עוד אין — יש לערוך אותו קודם.",

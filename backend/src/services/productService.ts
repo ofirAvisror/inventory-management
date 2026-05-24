@@ -414,6 +414,12 @@ export async function deleteProduct(
 export interface ChangeStatusInputCtx {
   status: ProductStatusValue;
   reason?: string;
+  // Optional supplements applied inside the same transaction as the status
+  // change. Used by the UI to fill `customerId` / `imageUrl` gaps when moving
+  // to a status that requires them, so callers no longer need a separate PUT
+  // before the PATCH (which would leave a non-atomic mid-state on failure).
+  customerId?: string;
+  imageUrl?: string;
 }
 
 export async function changeStatus(
@@ -442,19 +448,34 @@ export async function changeStatus(
   const nextStatus = input.status;
 
   if (currentStatus === nextStatus) {
+    // Status-only no-op. We intentionally ignore any supplements here: a
+    // "set details" call has its own dedicated endpoint (PUT /products/:id)
+    // and conflating it here would silently change product data without an
+    // audit trail.
     return toPublic(product);
   }
 
+  const nextCustomerId =
+    input.customerId !== undefined
+      ? input.customerId
+      : (product.customerId ?? null);
+  const nextImageUrl =
+    input.imageUrl !== undefined
+      ? input.imageUrl
+      : (product.imageUrl ?? null);
+
   assertDemotionAllowed(currentStatus, nextStatus, ctx.isAdmin);
   assertStatusRequirements(nextStatus, {
-    customerId: product.customerId ?? null,
-    imageUrl: product.imageUrl ?? null,
+    customerId: nextCustomerId,
+    imageUrl: nextImageUrl,
   });
 
   const session = await mongoose.startSession();
   try {
     let saved: ProductDoc | null = null;
     await session.withTransaction(async () => {
+      if (input.customerId !== undefined) product.customerId = input.customerId;
+      if (input.imageUrl !== undefined) product.imageUrl = input.imageUrl;
       product.status = nextStatus;
       saved = await product.save({ session });
 
@@ -558,17 +579,33 @@ export async function bulkDelete(
   return result;
 }
 
+export interface BulkStatusSupplement {
+  customerId?: string;
+  imageUrl?: string;
+}
+
 export async function bulkChangeStatus(
   ids: string[],
   status: ProductStatusValue,
   ctx: ActorContext,
-  reason?: string
+  reason?: string,
+  supplementsById?: Record<string, BulkStatusSupplement>
 ): Promise<BulkResult> {
   const result: BulkResult = { success: [], failed: [] };
 
   for (const id of ids) {
     try {
-      await changeStatus(id, { status, reason }, ctx);
+      const supplement = supplementsById?.[id];
+      await changeStatus(
+        id,
+        {
+          status,
+          reason,
+          customerId: supplement?.customerId,
+          imageUrl: supplement?.imageUrl,
+        },
+        ctx
+      );
       result.success.push({ id });
     } catch (err) {
       const { code, message } = describeError(err);

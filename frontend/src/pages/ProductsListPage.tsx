@@ -37,10 +37,24 @@ import {
   useDeleteProductMutation,
 } from "../features/products/hooks/useProductMutations";
 import { useProductsQuery } from "../features/products/hooks/useProductsQuery";
+import {
+  uploadProductImage,
+  type BulkStatusSupplement,
+} from "../features/products/api";
 import { translateProductErrorCode } from "../features/products/lib/errors";
 import { reconcileSelectionAfterBulk } from "../features/products/lib/selection";
 import {
+  getStatusGaps,
+  hasAnyGap,
+  isGapFilled,
+  type ProductSupplement,
+  type StatusChangeSubmitPayload,
+} from "../features/products/lib/statusRequirements";
+import {
   isProductStatusValue,
+  PRODUCT_ERROR_CODES,
+  ProductStatus,
+  type BulkFailureItem,
   type BulkResult,
   type ListProductsQuery,
   type ProductStatusValue,
@@ -84,6 +98,22 @@ function parseStatusParam(raw: string | null): ProductStatusValue | "" {
   return isProductStatusValue(parsed) ? parsed : "";
 }
 
+function productStubForId(id: string): PublicProduct {
+  return {
+    id,
+    name: id,
+    sku: id.slice(-8),
+    macAddress: "00:00:00:00:00:00",
+    imei: null,
+    customerId: null,
+    status: ProductStatus.StockIn,
+    statusLabel: String(ProductStatus.StockIn),
+    imageUrl: null,
+    createdAt: "",
+    updatedAt: "",
+  };
+}
+
 export function ProductsListPage() {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -119,6 +149,7 @@ export function ProductsListPage() {
     open: false,
   });
   const [statusServerError, setStatusServerError] = useState<unknown>(null);
+  const [statusPreparing, setStatusPreparing] = useState(false);
   const [deleteModal, setDeleteModal] = useState<DeleteModalState>({
     open: false,
   });
@@ -228,56 +259,178 @@ export function ProductsListPage() {
   const closeAudit = () =>
     setAuditDrawer((state) => ({ ...state, open: false }));
 
-  const submitStatusChange = (
-    targetStatus: ProductStatusValue,
-    reason: string | undefined,
-  ) => {
+  const statusModalProducts = useMemo((): PublicProduct[] => {
+    if (!statusModal.open) return [];
+    if (statusModal.target.mode === "single") {
+      return [statusModal.target.product];
+    }
+    const found = findProductsInLists(qc, statusModal.target.ids);
+    const byId = new Map(found.map((p) => [p.id, p]));
+    return statusModal.target.ids.map((id) => byId.get(id) ?? productStubForId(id));
+  }, [statusModal, qc]);
+
+  // Uploads any pending image files for products that have gaps for the target
+  // status. The status mutation is the atomic boundary: customerId / imageUrl
+  // are persisted on the server only if the status change succeeds. Upload
+  // failures are returned per product so the bulk result can surface them next
+  // to backend failures without breaking the rest of the batch.
+  const preparePerProductSupplements = async (
+    productsList: PublicProduct[],
+    payload: StatusChangeSubmitPayload,
+  ): Promise<{
+    supplementsById: Record<string, BulkStatusSupplement>;
+    uploadFailures: BulkFailureItem[];
+  }> => {
+    const supplementsById: Record<string, BulkStatusSupplement> = {};
+    const uploadFailures: BulkFailureItem[] = [];
+
+    for (const product of productsList) {
+      const gaps = getStatusGaps(product, payload.status);
+      if (!hasAnyGap(gaps)) continue;
+
+      const supplement: ProductSupplement | undefined =
+        payload.supplements[product.id];
+      if (!supplement || !isGapFilled(gaps, supplement)) {
+        uploadFailures.push({
+          id: product.id,
+          code: gaps.needsImage
+            ? PRODUCT_ERROR_CODES.IMAGE_REQUIRED
+            : PRODUCT_ERROR_CODES.CUSTOMER_REQUIRED,
+          message: t("products.errors.statusChangeFailed"),
+        });
+        continue;
+      }
+
+      let imageUrl: string | undefined =
+        supplement.image.url?.trim() || product.imageUrl || undefined;
+      if (gaps.needsImage && supplement.image.file && !supplement.image.url) {
+        try {
+          const uploaded = await uploadProductImage(supplement.image.file);
+          imageUrl = uploaded.url;
+        } catch (error) {
+          const apiError = toApiError(
+            error,
+            t("products.errors.statusChangeFailed"),
+          );
+          uploadFailures.push({
+            id: product.id,
+            code: apiError.code || PRODUCT_ERROR_CODES.UPLOAD_FAILED,
+            message: apiError.message,
+          });
+          continue;
+        }
+      }
+
+      const entry: BulkStatusSupplement = {};
+      if (gaps.needsCustomer) entry.customerId = supplement.customerId.trim();
+      if (gaps.needsImage && imageUrl) entry.imageUrl = imageUrl;
+      if (Object.keys(entry).length > 0) supplementsById[product.id] = entry;
+    }
+
+    return { supplementsById, uploadFailures };
+  };
+
+  const submitStatusChange = async (payload: StatusChangeSubmitPayload) => {
     if (!statusModal.open) return;
     const target = statusModal.target;
     setStatusServerError(null);
+    setStatusPreparing(true);
 
-    if (target.mode === "single") {
-      const product = target.product;
-      changeStatusOne.mutate(
-        {
-          id: product.id,
-          status: targetStatus,
-          reason,
-          previousStatus: product.status,
-          previousStatusLabel: product.statusLabel,
-        },
-        {
-          onSuccess: () => {
-            toast({
-              variant: "success",
-              title: t("products.success.statusChanged"),
-            });
-            closeStatusModal();
+    try {
+      const { supplementsById, uploadFailures } =
+        await preparePerProductSupplements(statusModalProducts, payload);
+
+      if (target.mode === "single") {
+        const product = target.product;
+        if (uploadFailures.length > 0) {
+          // Single-product flow has no partial result to show; surface the
+          // upload failure as a normal modal error.
+          const first = uploadFailures[0];
+          setStatusServerError(
+            new Error(
+              translateProductErrorCode(first.code, first.message, t),
+            ),
+          );
+          setStatusPreparing(false);
+          return;
+        }
+        const supplement = supplementsById[product.id];
+        changeStatusOne.mutate(
+          {
+            id: product.id,
+            status: payload.status,
+            reason: payload.reason,
+            customerId: supplement?.customerId,
+            imageUrl: supplement?.imageUrl,
+            previousStatus: product.status,
+            previousStatusLabel: product.statusLabel,
           },
-          onError: (error) => setStatusServerError(error),
-        },
-      );
-    } else {
+          {
+            onSuccess: () => {
+              toast({
+                variant: "success",
+                title: t("products.success.statusChanged"),
+              });
+              closeStatusModal();
+            },
+            onError: (error) => setStatusServerError(error),
+            onSettled: () => setStatusPreparing(false),
+          },
+        );
+        return;
+      }
+
       const ids = target.ids;
       const participants = findProductsInLists(qc, ids);
+      const failedIdSet = new Set(uploadFailures.map((f) => f.id));
+      const idsToSend = ids.filter((id) => !failedIdSet.has(id));
+
+      if (idsToSend.length === 0) {
+        // Every product hit an upload error before we even called the API;
+        // show the partial-result modal so the user can see what blew up.
+        handleBulkResult({
+          action: "status",
+          ids,
+          participants,
+          result: { success: [], failed: uploadFailures },
+          successMessage: t("products.success.bulkStatusChanged", { count: 0 }),
+        });
+        closeStatusModal();
+        setStatusPreparing(false);
+        return;
+      }
+
       bulkStatus.mutate(
-        { ids, status: targetStatus, reason },
+        {
+          ids: idsToSend,
+          status: payload.status,
+          reason: payload.reason,
+          supplements: supplementsById,
+        },
         {
           onSuccess: (result) => {
+            const merged: BulkResult = {
+              success: result.success,
+              failed: [...uploadFailures, ...result.failed],
+            };
             handleBulkResult({
               action: "status",
               ids,
               participants,
-              result,
+              result: merged,
               successMessage: t("products.success.bulkStatusChanged", {
-                count: result.success.length,
+                count: merged.success.length,
               }),
             });
             closeStatusModal();
           },
           onError: (error) => setStatusServerError(error),
+          onSettled: () => setStatusPreparing(false),
         },
       );
+    } catch (error) {
+      setStatusServerError(error);
+      setStatusPreparing(false);
     }
   };
 
@@ -432,6 +585,7 @@ export function ProductsListPage() {
 
   const statusModalTarget = statusModal.open ? statusModal.target : null;
   const statusPending =
+    statusPreparing ||
     (statusModalTarget?.mode === "single" && changeStatusOne.isPending) ||
     (statusModalTarget?.mode === "bulk" && bulkStatus.isPending);
 
@@ -449,16 +603,16 @@ export function ProductsListPage() {
   return (
     <AppLayout>
       <div className="flex flex-col gap-4">
-        <header className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+        <header className="flex flex-nowrap items-center justify-between gap-2 sm:gap-3">
+          <div className="min-w-0 flex-1">
+            <h1 className="truncate text-xl font-semibold tracking-tight sm:text-2xl md:text-3xl">
               {t("products.title")}
             </h1>
-            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+            <p className="mt-0.5 truncate text-xs text-zinc-600 dark:text-zinc-400 sm:mt-1 sm:text-sm">
               {t("products.subtitle")}
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex shrink-0 flex-nowrap items-center gap-1.5 sm:gap-2">
             <ExportMenu
               filterQuery={query}
               selectedProducts={selectedProducts}
@@ -517,6 +671,7 @@ export function ProductsListPage() {
       <StatusChangeModal
         open={statusModal.open}
         target={statusModalTarget}
+        products={statusModalProducts}
         pending={statusPending}
         serverError={statusServerError}
         onCancel={closeStatusModal}

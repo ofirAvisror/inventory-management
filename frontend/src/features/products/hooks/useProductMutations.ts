@@ -3,10 +3,17 @@ import {
   bulkChangeStatus,
   bulkDelete,
   changeStatus,
+  createProduct,
   deleteProduct,
   productKeys,
+  updateProduct,
+  uploadProductImage,
   type BulkChangeStatusInput,
+  type BulkStatusSupplement,
   type ChangeStatusInput,
+  type CreateProductInput,
+  type UpdateProductInput,
+  type UploadImageResult,
 } from "../api";
 import type {
   BulkResult,
@@ -23,6 +30,36 @@ import {
 
 interface ListSnapshotCtx {
   previous: ReturnType<typeof snapshotLists>;
+}
+
+export function useCreateProductMutation() {
+  const qc = useQueryClient();
+  return useMutation<PublicProduct, unknown, CreateProductInput>({
+    mutationFn: (input) => createProduct(input),
+    onSuccess: () => {
+      void invalidateProductLists(qc);
+    },
+  });
+}
+
+export function useUploadProductImageMutation() {
+  return useMutation<UploadImageResult, unknown, File>({
+    mutationFn: (file) => uploadProductImage(file),
+  });
+}
+
+export function useUpdateProductMutation() {
+  const qc = useQueryClient();
+  return useMutation<
+    PublicProduct,
+    unknown,
+    { id: string; input: UpdateProductInput }
+  >({
+    mutationFn: ({ id, input }) => updateProduct(id, input),
+    onSuccess: () => {
+      void invalidateProductLists(qc);
+    },
+  });
 }
 
 export function useDeleteProductMutation() {
@@ -48,6 +85,8 @@ interface SingleStatusVars {
   id: string;
   status: ProductStatusValue;
   reason?: string;
+  customerId?: string;
+  imageUrl?: string;
   previousStatus: ProductStatusValue;
   previousStatusLabel: string;
 }
@@ -55,8 +94,8 @@ interface SingleStatusVars {
 export function useChangeStatusMutation() {
   const qc = useQueryClient();
   return useMutation<PublicProduct, unknown, SingleStatusVars, ListSnapshotCtx>({
-    mutationFn: ({ id, status, reason }) => {
-      const input: ChangeStatusInput = { status, reason };
+    mutationFn: ({ id, status, reason, customerId, imageUrl }) => {
+      const input: ChangeStatusInput = { status, reason, customerId, imageUrl };
       return changeStatus(id, input);
     },
     onMutate: async ({ id, status }) => {
@@ -115,13 +154,14 @@ interface BulkStatusVars {
   ids: string[];
   status: ProductStatusValue;
   reason?: string;
+  supplements?: Record<string, BulkStatusSupplement>;
 }
 
 export function useBulkStatusMutation() {
   const qc = useQueryClient();
   return useMutation<BulkResult, unknown, BulkStatusVars, ListSnapshotCtx>({
-    mutationFn: ({ ids, status, reason }: BulkStatusVars) => {
-      const input: BulkChangeStatusInput = { ids, status, reason };
+    mutationFn: ({ ids, status, reason, supplements }: BulkStatusVars) => {
+      const input: BulkChangeStatusInput = { ids, status, reason, supplements };
       return bulkChangeStatus(input);
     },
     onMutate: async ({ ids, status }) => {

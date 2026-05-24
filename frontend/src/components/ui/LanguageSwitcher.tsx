@@ -57,14 +57,14 @@ export function LanguageSwitcher() {
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-label={t("language.label")}
-        className="inline-flex h-9 items-center gap-2 rounded-lg border border-zinc-300 px-3 text-sm font-medium transition hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
+        className="inline-flex h-11 shrink-0 items-center gap-2 rounded-lg border border-zinc-300 px-2 text-sm font-medium transition hover:bg-zinc-100 sm:px-3 dark:border-zinc-700 dark:hover:bg-zinc-800"
       >
         <CurrentFlag
           aria-hidden="true"
           className="h-4 w-6 rounded-sm shadow-sm ring-1 ring-black/10 dark:ring-white/10"
         />
-        <span>{t(`language.${current}`)}</span>
-        <span aria-hidden="true" className="text-xs opacity-70">
+        <span className="hidden sm:inline">{t(`language.${current}`)}</span>
+        <span aria-hidden="true" className="hidden text-xs opacity-70 sm:inline">
           ▾
         </span>
       </button>

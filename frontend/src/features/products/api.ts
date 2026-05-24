@@ -64,6 +64,59 @@ export async function getProduct(id: string): Promise<PublicProduct> {
   return data.product;
 }
 
+export interface CreateProductInput {
+  name: string;
+  sku: string;
+  macAddress: string;
+  imei?: string;
+  customerId?: string;
+  status?: ProductStatusValue;
+  imageUrl?: string;
+}
+
+export async function createProduct(
+  input: CreateProductInput,
+): Promise<PublicProduct> {
+  const { data } = await api.post<{ product: PublicProduct }>(BASE, input);
+  return data.product;
+}
+
+export interface UploadImageResult {
+  url: string;
+  publicId: string;
+  width: number;
+  height: number;
+  format: string;
+  bytes: number;
+}
+
+// Axios automatically sets the multipart boundary in `Content-Type` when the
+// request body is a `FormData` instance, so we do not set it manually here.
+export async function uploadProductImage(
+  file: File,
+): Promise<UploadImageResult> {
+  const form = new FormData();
+  form.append("file", file);
+  const { data } = await api.post<UploadImageResult>(`${BASE}/upload`, form);
+  return data;
+}
+
+export interface UpdateProductInput {
+  customerId?: string;
+  imageUrl?: string;
+}
+
+export async function updateProduct(
+  id: string,
+  input: UpdateProductInput,
+): Promise<PublicProduct> {
+  const { data } = await api.put<{ product: PublicProduct }>(
+    `${BASE}/${id}`,
+    input,
+  );
+  return data.product;
+}
+
 export async function deleteProduct(id: string): Promise<void> {
   await api.delete(`${BASE}/${id}`);
 }
@@ -76,6 +129,11 @@ export async function bulkDelete(ids: string[]): Promise<BulkResult> {
 export interface ChangeStatusInput {
   status: ProductStatusValue;
   reason?: string;
+  // Optional supplements applied atomically with the status change on the
+  // server. Use these instead of a separate PUT when a status transition
+  // requires customer/image data the product does not yet have.
+  customerId?: string;
+  imageUrl?: string;
 }
 
 export async function changeStatus(
@@ -89,10 +147,17 @@ export async function changeStatus(
   return data.product;
 }
 
+export interface BulkStatusSupplement {
+  customerId?: string;
+  imageUrl?: string;
+}
+
 export interface BulkChangeStatusInput {
   ids: string[];
   status: ProductStatusValue;
   reason?: string;
+  // Per-id supplements; ids not present here get no supplement.
+  supplements?: Record<string, BulkStatusSupplement>;
 }
 
 export async function bulkChangeStatus(

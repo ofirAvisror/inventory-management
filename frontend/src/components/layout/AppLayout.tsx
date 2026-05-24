@@ -58,7 +58,7 @@ function LogoutButton() {
       type="button"
       onClick={() => void handleLogout()}
       disabled={pending}
-      className="inline-flex h-11 items-center rounded-lg border border-zinc-300 px-3 text-sm font-medium transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:hover:bg-zinc-800"
+      className="inline-flex h-11 shrink-0 items-center rounded-lg border border-zinc-300 px-2 text-xs font-medium transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60 sm:px-3 sm:text-sm dark:border-zinc-700 dark:hover:bg-zinc-800"
     >
       {t("app.logout")}
     </button>
@@ -69,9 +69,11 @@ export function AppLayout({ children }: AppLayoutProps) {
   return (
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-30 border-b border-zinc-200 bg-white/80 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/80">
-        <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
-          <AppBrand />
-          <div className="flex flex-wrap items-center gap-2">
+        <div className="mx-auto flex w-full max-w-7xl flex-nowrap items-center justify-between gap-2 px-4 py-3 sm:gap-3 sm:px-6">
+          <div className="min-w-0 shrink">
+            <AppBrand />
+          </div>
+          <div className="flex shrink-0 flex-nowrap items-center gap-1.5 sm:gap-2">
             <AdminToggle />
             <LanguageSwitcher />
             <ThemeToggleButton />
