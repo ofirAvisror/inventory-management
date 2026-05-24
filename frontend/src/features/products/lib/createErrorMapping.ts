@@ -53,7 +53,7 @@ export interface HandleCreateProductErrorResult {
 }
 
 /**
- * Map a backend create-product failure to the right surface:
+ * Map a backend product-form failure (create or edit) to the right surface:
  *  - per-field VALIDATION_ERROR details -> react-hook-form `setError`
  *  - single-code errors with a clear owner field -> `setError` on that field
  *  - everything else -> top-level message returned for an <Alert>
@@ -61,12 +61,13 @@ export interface HandleCreateProductErrorResult {
  * All messages are routed through i18n via `translateProductErrorCode` so the
  * user never sees raw English from the backend.
  */
-export function handleCreateProductError(
+export function handleProductFormError(
   error: unknown,
   setError: UseFormSetError<ProductFormValues>,
   t: TFunction,
+  fallbackKey: string = "products.create.errors.submitFailed",
 ): HandleCreateProductErrorResult {
-  const fallback = t("products.create.errors.submitFailed");
+  const fallback = t(fallbackKey);
   const apiError = toApiError(error, fallback);
   const translated = translateProductErrorCode(
     apiError.code,
@@ -111,4 +112,17 @@ export function handleCreateProductError(
   // 3) Everything else (UPLOAD_FAILED, UPLOAD_TYPE_INVALID, UPLOAD_REQUIRED,
   // NOT_FOUND, 401/403, network) -> banner.
   return { topLevelMessage: translated };
+}
+
+/**
+ * Backward-compatible alias used by the create-product page. New callers
+ * should prefer `handleProductFormError` directly so they can pass a custom
+ * fallback i18n key (e.g. for the edit page).
+ */
+export function handleCreateProductError(
+  error: unknown,
+  setError: UseFormSetError<ProductFormValues>,
+  t: TFunction,
+): HandleCreateProductErrorResult {
+  return handleProductFormError(error, setError, t);
 }

@@ -37,11 +37,12 @@ import {
   useDeleteProductMutation,
 } from "../features/products/hooks/useProductMutations";
 import { useProductsQuery } from "../features/products/hooks/useProductsQuery";
-import {
-  uploadProductImage,
-  type BulkStatusSupplement,
-} from "../features/products/api";
+import { type BulkStatusSupplement } from "../features/products/api";
 import { translateProductErrorCode } from "../features/products/lib/errors";
+import {
+  createImageUploadCache,
+  uploadProductImageOnce,
+} from "../features/products/lib/uploadCache";
 import { reconcileSelectionAfterBulk } from "../features/products/lib/selection";
 import {
   getStatusGaps,
@@ -150,6 +151,9 @@ export function ProductsListPage() {
   });
   const [statusServerError, setStatusServerError] = useState<unknown>(null);
   const [statusPreparing, setStatusPreparing] = useState(false);
+  // Per-page upload cache: prevents re-uploading the same image when a bulk
+  // status mutation partially fails and the user retries from the modal.
+  const [statusUploadCache] = useState(createImageUploadCache);
   const [deleteModal, setDeleteModal] = useState<DeleteModalState>({
     open: false,
   });
@@ -305,8 +309,10 @@ export function ProductsListPage() {
         supplement.image.url?.trim() || product.imageUrl || undefined;
       if (gaps.needsImage && supplement.image.file && !supplement.image.url) {
         try {
-          const uploaded = await uploadProductImage(supplement.image.file);
-          imageUrl = uploaded.url;
+          imageUrl = await uploadProductImageOnce(
+            statusUploadCache,
+            supplement.image.file,
+          );
         } catch (error) {
           const apiError = toApiError(
             error,

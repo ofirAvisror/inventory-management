@@ -20,6 +20,8 @@ import {
 } from "../types";
 import { ImageDropzone, type ImageDropzoneValue } from "./ImageDropzone";
 
+export type ProductFormMode = "create" | "edit";
+
 interface ProductFormProps {
   register: UseFormRegister<ProductFormValues>;
   control: Control<ProductFormValues>;
@@ -31,6 +33,16 @@ interface ProductFormProps {
   submitting: boolean;
   uploading: boolean;
   serverError: string | null;
+  // "create" is the default and renders the original new-product flow.
+  // "edit" hides the status select (status changes are a separate, audited
+  // action) and uses edit-flavored submit/cancel labels. The cancel button
+  // still falls back to a Link to /products unless `onCancel` is provided.
+  mode?: ProductFormMode;
+  onCancel?: () => void;
+  // When the parent already opens the advanced section by default (e.g. an
+  // edit page that wants the customer/image fields visible), this overrides
+  // the default collapsed state.
+  defaultAdvancedOpen?: boolean;
 }
 
 export function ProductForm({
@@ -44,9 +56,17 @@ export function ProductForm({
   submitting,
   uploading,
   serverError,
+  mode = "create",
+  onCancel,
+  defaultAdvancedOpen,
 }: ProductFormProps) {
   const { t } = useTranslation();
-  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const isEdit = mode === "edit";
+  // Edit mode keeps the optional fields visible by default so users don't
+  // have to discover the toggle to change a customer ID or image.
+  const [advancedOpen, setAdvancedOpen] = useState(
+    defaultAdvancedOpen ?? isEdit,
+  );
 
   const needsCustomer = status >= ProductStatus.AssignedToCustomer;
   const needsImage = status >= ProductStatus.ReadyForDelivery;
@@ -142,40 +162,42 @@ export function ProductForm({
             id="product-create-advanced"
             className="flex flex-col gap-4 border-t border-zinc-200 px-4 py-4 dark:border-zinc-800"
           >
-            <Controller
-              control={control}
-              name="status"
-              render={({ field, fieldState }) => (
-                <label className="flex flex-col gap-1.5 text-sm">
-                  <span className="font-medium text-zinc-700 dark:text-zinc-300">
-                    {t("products.create.fields.status")}
-                  </span>
-                  <select
-                    value={field.value}
-                    onChange={(event) =>
-                      field.onChange(
-                        Number(event.target.value) as ProductStatusValue,
-                      )
-                    }
-                    onBlur={field.onBlur}
-                    name={field.name}
-                    ref={field.ref}
-                    className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2.5 text-sm shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-500/30 dark:border-zinc-700 dark:bg-zinc-950"
-                  >
-                    {PRODUCT_STATUS_VALUES.map((s) => (
-                      <option key={s} value={s}>
-                        {s}. {t(`products.status.${s}`)}
-                      </option>
-                    ))}
-                  </select>
-                  {fieldState.error?.message ? (
-                    <p className="text-xs text-red-600 dark:text-red-400">
-                      {fieldState.error.message}
-                    </p>
-                  ) : null}
-                </label>
-              )}
-            />
+            {isEdit ? null : (
+              <Controller
+                control={control}
+                name="status"
+                render={({ field, fieldState }) => (
+                  <label className="flex flex-col gap-1.5 text-sm">
+                    <span className="font-medium text-zinc-700 dark:text-zinc-300">
+                      {t("products.create.fields.status")}
+                    </span>
+                    <select
+                      value={field.value}
+                      onChange={(event) =>
+                        field.onChange(
+                          Number(event.target.value) as ProductStatusValue,
+                        )
+                      }
+                      onBlur={field.onBlur}
+                      name={field.name}
+                      ref={field.ref}
+                      className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2.5 text-sm shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-500/30 dark:border-zinc-700 dark:bg-zinc-950"
+                    >
+                      {PRODUCT_STATUS_VALUES.map((s) => (
+                        <option key={s} value={s}>
+                          {s}. {t(`products.status.${s}`)}
+                        </option>
+                      ))}
+                    </select>
+                    {fieldState.error?.message ? (
+                      <p className="text-xs text-red-600 dark:text-red-400">
+                        {fieldState.error.message}
+                      </p>
+                    ) : null}
+                  </label>
+                )}
+              />
+            )}
 
             <div className="flex flex-col gap-1.5">
               <TextField
@@ -214,26 +236,46 @@ export function ProductForm({
       </div>
 
       <div className="flex flex-col-reverse items-stretch gap-2 sm:flex-row sm:items-center sm:justify-end">
-        <Link to={paths.products} className="sm:w-auto">
+        {onCancel ? (
           <Button
             type="button"
             variant="secondary"
             disabled={submitting || uploading}
+            onClick={onCancel}
             className="w-full sm:w-auto"
           >
-            {t("products.create.cancel")}
+            {isEdit
+              ? t("products.detail.edit.cancel")
+              : t("products.create.cancel")}
           </Button>
-        </Link>
+        ) : (
+          <Link to={paths.products} className="sm:w-auto">
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={submitting || uploading}
+              className="w-full sm:w-auto"
+            >
+              {isEdit
+                ? t("products.detail.edit.cancel")
+                : t("products.create.cancel")}
+            </Button>
+          </Link>
+        )}
         <div className="sm:w-auto sm:min-w-[12rem]">
           <SubmitButton
             loading={submitting || uploading}
             loadingLabel={
               uploading
                 ? t("products.create.image.uploading")
-                : t("products.create.submitting")
+                : isEdit
+                  ? t("products.detail.edit.saving")
+                  : t("products.create.submitting")
             }
           >
-            {t("products.create.submit")}
+            {isEdit
+              ? t("products.detail.edit.save")
+              : t("products.create.submit")}
           </SubmitButton>
         </div>
       </div>

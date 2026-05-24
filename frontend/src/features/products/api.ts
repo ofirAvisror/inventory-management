@@ -101,9 +101,18 @@ export async function uploadProductImage(
   return data;
 }
 
+// Mirrors the backend's `updateProductSchema` (see
+// backend/src/validators/product.ts). All fields are optional; the backend
+// rejects an empty payload. `status` is intentionally omitted here because
+// status changes go through the dedicated PATCH /:id/status endpoint, which
+// also writes to the audit log.
 export interface UpdateProductInput {
-  customerId?: string;
-  imageUrl?: string;
+  name?: string;
+  sku?: string;
+  macAddress?: string;
+  imei?: string | null;
+  customerId?: string | null;
+  imageUrl?: string | null;
 }
 
 export async function updateProduct(
