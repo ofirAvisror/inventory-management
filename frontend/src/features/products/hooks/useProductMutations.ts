@@ -56,7 +56,12 @@ export function useUpdateProductMutation() {
     { id: string; input: UpdateProductInput }
   >({
     mutationFn: ({ id, input }) => updateProduct(id, input),
-    onSuccess: () => {
+    onSuccess: (product, variables) => {
+      // Seed the detail cache with the freshly-saved product so the detail
+      // page reflects the change without an extra round-trip. The list cache
+      // is invalidated separately because list rows expose a subset of fields
+      // and would need a different patch strategy.
+      qc.setQueryData(productKeys.detail(variables.id), product);
       void invalidateProductLists(qc);
     },
   });
