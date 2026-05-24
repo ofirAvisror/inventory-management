@@ -114,6 +114,17 @@
       "notifications": "Notifications",
       "dismiss": "Dismiss"
     },
+    "pwa": {
+      "updateAvailable": "Update available",
+      "updateDescription": "A new version of StockMaster is ready.",
+      "reload": "Reload",
+      "offlineReady": "Ready for offline use",
+      "offlineReadyDescription": "The app shell is cached and can load without a network connection.",
+      "installTitle": "Install StockMaster",
+      "installDescription": "Add the app to your home screen for quick access.",
+      "install": "Install",
+      "installDismiss": "Not now"
+    },
     "products": {
       "title": "Products",
       "subtitle": "Manage your inventory",
@@ -482,6 +493,17 @@
       "no": "לא",
       "notifications": "התראות",
       "dismiss": "סגירה"
+    },
+    "pwa": {
+      "updateAvailable": "עדכון זמין",
+      "updateDescription": "גרסה חדשה של StockMaster מוכנה.",
+      "reload": "רענון",
+      "offlineReady": "מוכן לשימוש offline",
+      "offlineReadyDescription": "ממשק האפליקציה נשמר במטמון ויכול להיטען גם בלי חיבור לרשת.",
+      "installTitle": "התקנת StockMaster",
+      "installDescription": "הוסיפו את האפליקציה למסך הבית לגישה מהירה.",
+      "install": "התקנה",
+      "installDismiss": "לא עכשיו"
     },
     "products": {
       "title": "מוצרים",

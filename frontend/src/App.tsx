@@ -1,5 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { PwaInstallBanner, PwaUpdater } from "./components/PwaUpdater";
 import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
 import { LoginPage } from "./pages/LoginPage";
 import { ProductDetailPage } from "./pages/ProductDetailPage";
@@ -13,6 +14,8 @@ import { paths } from "./routes/paths";
 function App() {
   return (
     <BrowserRouter>
+      <PwaInstallBanner />
+      <PwaUpdater />
       <Routes>
         <Route path={paths.login} element={<LoginPage />} />
         <Route path={paths.register} element={<RegisterPage />} />

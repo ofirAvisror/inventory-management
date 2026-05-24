@@ -18,6 +18,7 @@ export interface ToastInput {
   description?: string;
   variant?: ToastVariant;
   durationMs?: number;
+  position?: "top" | "bottom";
   action?: {
     label: string;
     onClick: () => void;
@@ -28,6 +29,7 @@ interface Toast extends Required<Pick<ToastInput, "variant">> {
   id: number;
   title?: string;
   description?: string;
+  position: "top" | "bottom";
   action?: ToastInput["action"];
 }
 
@@ -62,6 +64,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         variant: input.variant ?? "info",
         title: input.title,
         description: input.description,
+        position: input.position ?? "bottom",
         action: input.action,
       };
       setToasts((current) => [...current, next]);
@@ -92,7 +95,18 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {children}
       {typeof document !== "undefined"
         ? createPortal(
-            <ToastViewport toasts={toasts} dismiss={dismiss} />,
+            <>
+              <ToastViewport
+                toasts={toasts.filter((toast) => toast.position === "top")}
+                dismiss={dismiss}
+                position="top"
+              />
+              <ToastViewport
+                toasts={toasts.filter((toast) => toast.position === "bottom")}
+                dismiss={dismiss}
+                position="bottom"
+              />
+            </>,
             document.body,
           )
         : null}
@@ -122,16 +136,25 @@ const variantStyles: Record<ToastVariant, string> = {
 function ToastViewport({
   toasts,
   dismiss,
+  position,
 }: {
   toasts: Toast[];
   dismiss: (id: number) => void;
+  position: "top" | "bottom";
 }) {
   const { t } = useTranslation();
+  if (toasts.length === 0) return null;
+
+  const positionClass =
+    position === "top"
+      ? "top-16 sm:top-4"
+      : "bottom-4";
+
   return (
     <div
       role="region"
       aria-label={t("common.notifications")}
-      className="pointer-events-none fixed inset-x-0 bottom-4 z-[100] flex flex-col items-center gap-2 px-4 sm:items-end sm:px-6"
+      className={`pointer-events-none fixed inset-x-0 z-[100] flex flex-col items-center gap-2 px-4 sm:items-end sm:px-6 ${positionClass}`}
     >
       {toasts.map((toast) => (
         <div
