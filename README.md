@@ -284,3 +284,24 @@ Full templates with comments are in:
 | POST | `/api/products/bulk-delete` | Yes | Bulk delete |
 | POST | `/api/products/bulk-status` | Yes | Bulk status change |
 | POST | `/api/products/upload` | Yes | Upload product image |
+
+## What I'd Add With More Time
+
+The current scope covers inventory and product lifecycle. With additional time, I would extend the system toward **customer understanding and upsell opportunities**:
+
+- **Customer profile card** — a dedicated view per `customerId` showing assigned products, delivery history, status timeline, and contact details in one place (today `customerId` is only a field on the product).
+- **Needs discovery** — when a customer or prospect contacts the company, capture their use case, environment, and constraints (e.g. fleet size, connectivity, deployment stage) so the team understands *why* they need a product, not just *which* SKU was assigned.
+- **Recommendations** — based on what the customer already has and what stage they are in (Stock In → Delivered), suggest logical next products, accessories, or services (e.g. configuration support, replacement units, bulk rollout).
+
+This would turn the app from pure inventory tracking into a lightweight CRM layer on top of the same product and audit data, without changing the backend-as-source-of-truth principle for status rules.
+
+Other improvements I would consider: automated tests (API + UI), a shared types package between frontend and backend, and a dev-mode mail catcher so reviewers can run the app without real SMTP.
+
+## AI Tools Used
+
+I used **Cursor** (AI-assisted IDE) during this project:
+
+- **Planning and architecture** — consulted on project structure, layer separation, library choices, and tradeoffs before implementing.
+- **Code generation and review** — used AI to draft and iterate on boilerplate, components, and service logic; I reviewed, adjusted, and validated all output to match the assignment requirements.
+
+All architectural and business-rule decisions were made consciously; I can explain any part of the codebase in the follow-up interview.
