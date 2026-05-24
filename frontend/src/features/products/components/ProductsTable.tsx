@@ -36,7 +36,7 @@ export function ProductsTable({
 }: ProductsTableProps) {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
-  const lang = i18n.language === "he" ? "he-IL" : "en-US";
+  const lang = i18n.language.startsWith("he") ? "he-IL" : "en-US";
 
   const allOnPageSelected = useMemo(
     () => items.length > 0 && items.every((p) => selectedIds.has(p.id)),

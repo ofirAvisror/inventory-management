@@ -256,7 +256,9 @@ export function ProductForm({
               disabled={submitting || uploading}
               className="w-full sm:w-auto"
             >
-              {t("products.create.cancel")}
+              {isEdit
+                ? t("products.detail.edit.cancel")
+                : t("products.create.cancel")}
             </Button>
           </Link>
         )}

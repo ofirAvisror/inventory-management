@@ -41,7 +41,7 @@ export function AuditLogList({ productId, enabled = true }: AuditLogListProps) {
     );
   }
 
-  const lang = i18n.language === "he" ? "he-IL" : "en-US";
+  const lang = i18n.language.startsWith("he") ? "he-IL" : "en-US";
 
   return (
     <ol className="flex flex-col gap-3">

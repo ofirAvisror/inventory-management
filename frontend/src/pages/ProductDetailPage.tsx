@@ -11,7 +11,6 @@ import { Spinner } from "../components/ui/FullPageSpinner";
 import { useToast } from "../contexts/ToastContext";
 import {
   productKeys,
-  uploadProductImage,
   type UpdateProductInput,
 } from "../features/products/api";
 import { AuditLogList } from "../features/products/components/AuditLogList";
@@ -29,6 +28,10 @@ import {
 } from "../features/products/hooks/useProductMutations";
 import { useProductQuery } from "../features/products/hooks/useProductQuery";
 import { handleProductFormError } from "../features/products/lib/createErrorMapping";
+import {
+  createImageUploadCache,
+  uploadProductImageOnce,
+} from "../features/products/lib/uploadCache";
 import {
   buildProductFormSchema,
   type ProductFormValues,
@@ -155,6 +158,10 @@ function ProductDetailLoaded({
   const [statusServerError, setStatusServerError] = useState<unknown>(null);
   const [statusPreparing, setStatusPreparing] = useState(false);
   const changeStatusMutation = useChangeStatusMutation();
+  // Survives across retries within the same page mount: if an upload succeeds
+  // but the status mutation fails, we don't re-upload the same bytes when the
+  // user clicks Submit again from the still-open modal.
+  const [statusUploadCache] = useState(createImageUploadCache);
 
   const openStatusModal = () => {
     setStatusServerError(null);
@@ -177,12 +184,16 @@ function ProductDetailLoaded({
       // Uploading the staged file mirrors the list-page flow: the upload
       // happens BEFORE calling PATCH /status so the file is durable in storage
       // by the time the status mutation runs (we don't want a half-applied
-      // state where status changed but the image upload errored out).
+      // state where status changed but the image upload errored out). The
+      // upload cache makes retries cheap and avoids orphan storage objects
+      // when only the status mutation failed.
       if (gaps.needsImage && supplement.image.file && !supplement.image.url) {
         setStatusPreparing(true);
         try {
-          const uploaded = await uploadProductImage(supplement.image.file);
-          imageUrl = uploaded.url;
+          imageUrl = await uploadProductImageOnce(
+            statusUploadCache,
+            supplement.image.file,
+          );
         } catch (uploadError) {
           setStatusServerError(uploadError);
           setStatusPreparing(false);
@@ -305,7 +316,7 @@ function ProductReadOnly({
   onEdit: () => void;
 }) {
   const { t, i18n } = useTranslation();
-  const lang = i18n.language === "he" ? "he-IL" : "en-US";
+  const lang = i18n.language.startsWith("he") ? "he-IL" : "en-US";
   const empty = t("products.detail.empty");
   const formatDate = (value: string | null) =>
     value ? new Date(value).toLocaleString(lang) : empty;
@@ -419,18 +430,20 @@ function ProductEditCard({
     setError,
     clearErrors,
     reset,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<ProductFormValues>({
     resolver: zodResolver(schema),
     defaultValues: toFormDefaults(product),
   });
 
-  // Reset whenever the underlying product changes (e.g. after a successful
-  // save populates the cache with the freshly-saved fields). Without this
-  // the form would keep showing the values the user typed before save.
+  // Sync the form when the underlying product changes (e.g. a background
+  // detail refetch after a status change). We deliberately skip the sync if
+  // the user has unsaved edits — without that guard, in-flight typing would
+  // be silently discarded by an unrelated cache update.
   useEffect(() => {
+    if (isDirty) return;
     reset(toFormDefaults(product));
-  }, [product, reset]);
+  }, [product, reset, isDirty]);
 
   const [image, setImage] = useState<ImageDropzoneValue>({
     file: null,
