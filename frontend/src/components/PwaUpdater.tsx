@@ -144,13 +144,23 @@ export function PwaInstallBanner() {
   );
 }
 
-let updateToastVisible = false;
+async function applyServiceWorkerUpdate(
+  updateSW: (reloadPage?: boolean) => Promise<void>,
+): Promise<void> {
+  try {
+    await updateSW(true);
+  } catch {
+    // skipWaiting can fail if the waiting worker was already activated
+  }
+  window.location.reload();
+}
 
 export function PwaUpdater() {
   const { toast } = useToast();
   const { t } = useTranslation();
   const toastRef = useRef(toast);
   const tRef = useRef(t);
+  const updateToastShownRef = useRef(false);
 
   useEffect(() => {
     toastRef.current = toast;
@@ -161,6 +171,8 @@ export function PwaUpdater() {
   }, [t]);
 
   useEffect(() => {
+    if (import.meta.env.DEV) return;
+
     const showOfflineReadyToast = () => {
       if (hasSessionFlag(OFFLINE_READY_KEY)) return;
       setSessionFlag(OFFLINE_READY_KEY);
@@ -172,27 +184,25 @@ export function PwaUpdater() {
       });
     };
 
-    const showUpdateToast = () => {
-      if (updateToastVisible) return;
-      updateToastVisible = true;
-      toastRef.current({
-        variant: "info",
-        title: tRef.current("pwa.updateAvailable"),
-        description: tRef.current("pwa.updateDescription"),
-        durationMs: 0,
-        position: "top",
-        action: {
-          label: tRef.current("pwa.reload"),
-          onClick: () => {
-            void updateSW(true);
-          },
-        },
-      });
-    };
-
     const updateSW = registerSW({
       immediate: true,
-      onNeedRefresh: showUpdateToast,
+      onNeedRefresh() {
+        if (updateToastShownRef.current) return;
+        updateToastShownRef.current = true;
+        toastRef.current({
+          variant: "info",
+          title: tRef.current("pwa.updateAvailable"),
+          description: tRef.current("pwa.updateDescription"),
+          durationMs: 0,
+          position: "top",
+          action: {
+            label: tRef.current("pwa.reload"),
+            onClick: () => {
+              void applyServiceWorkerUpdate(updateSW);
+            },
+          },
+        });
+      },
       onOfflineReady: showOfflineReadyToast,
       onRegisteredSW(_swUrl, registration) {
         if (registration?.active || navigator.serviceWorker.controller) {

@@ -47,10 +47,6 @@ export default defineConfig({
         navigateFallback: "/index.html",
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
       },
-      devOptions: {
-        enabled: true,
-        suppressWarnings: true,
-      },
     }),
   ],
 });
