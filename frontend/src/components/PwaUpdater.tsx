@@ -5,6 +5,22 @@ import { useToast } from "../contexts/ToastContext";
 
 const OFFLINE_READY_KEY = "pwa-offline-ready-shown";
 
+function hasSessionFlag(key: string): boolean {
+  try {
+    return sessionStorage.getItem(key) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function setSessionFlag(key: string): void {
+  try {
+    sessionStorage.setItem(key, "1");
+  } catch {
+    // ignore storage errors
+  }
+}
+
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
@@ -74,16 +90,18 @@ export function PwaInstallBanner() {
 
   const handleInstall = async () => {
     if (!installEvent) return;
-    await installEvent.prompt();
-    const { outcome } = await installEvent.userChoice;
-    if (outcome === "accepted") {
+    try {
+      await installEvent.prompt();
+      const { outcome } = await installEvent.userChoice;
+      if (outcome !== "accepted") {
+        dismissInstallPrompt();
+      }
+    } catch {
+      // prompt() can reject if already consumed or blocked by the browser
+    } finally {
       setVisible(false);
       setInstallEvent(null);
-      return;
     }
-    dismissInstallPrompt();
-    setVisible(false);
-    setInstallEvent(null);
   };
 
   const handleDismiss = () => {
@@ -126,6 +144,8 @@ export function PwaInstallBanner() {
   );
 }
 
+let updateToastVisible = false;
+
 export function PwaUpdater() {
   const { toast } = useToast();
   const { t } = useTranslation();
@@ -142,8 +162,8 @@ export function PwaUpdater() {
 
   useEffect(() => {
     const showOfflineReadyToast = () => {
-      if (sessionStorage.getItem(OFFLINE_READY_KEY)) return;
-      sessionStorage.setItem(OFFLINE_READY_KEY, "1");
+      if (hasSessionFlag(OFFLINE_READY_KEY)) return;
+      setSessionFlag(OFFLINE_READY_KEY);
       toastRef.current({
         variant: "success",
         title: tRef.current("pwa.offlineReady"),
@@ -152,23 +172,27 @@ export function PwaUpdater() {
       });
     };
 
+    const showUpdateToast = () => {
+      if (updateToastVisible) return;
+      updateToastVisible = true;
+      toastRef.current({
+        variant: "info",
+        title: tRef.current("pwa.updateAvailable"),
+        description: tRef.current("pwa.updateDescription"),
+        durationMs: 0,
+        position: "top",
+        action: {
+          label: tRef.current("pwa.reload"),
+          onClick: () => {
+            void updateSW(true);
+          },
+        },
+      });
+    };
+
     const updateSW = registerSW({
       immediate: true,
-      onNeedRefresh() {
-        toastRef.current({
-          variant: "info",
-          title: tRef.current("pwa.updateAvailable"),
-          description: tRef.current("pwa.updateDescription"),
-          durationMs: 0,
-          position: "top",
-          action: {
-            label: tRef.current("pwa.reload"),
-            onClick: () => {
-              void updateSW(true);
-            },
-          },
-        });
-      },
+      onNeedRefresh: showUpdateToast,
       onOfflineReady: showOfflineReadyToast,
       onRegisteredSW(_swUrl, registration) {
         if (registration?.active || navigator.serviceWorker.controller) {

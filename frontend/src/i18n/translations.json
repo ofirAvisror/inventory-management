@@ -498,7 +498,7 @@
       "updateAvailable": "עדכון זמין",
       "updateDescription": "גרסה חדשה של StockMaster מוכנה.",
       "reload": "רענון",
-      "offlineReady": "מוכן לשימוש offline",
+      "offlineReady": "מוכן לשימוש ללא חיבור",
       "offlineReadyDescription": "ממשק האפליקציה נשמר במטמון ויכול להיטען גם בלי חיבור לרשת.",
       "installTitle": "התקנת StockMaster",
       "installDescription": "הוסיפו את האפליקציה למסך הבית לגישה מהירה.",
