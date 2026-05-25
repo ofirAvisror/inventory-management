@@ -91,6 +91,7 @@ export const updateProductSchema = z
 
 export const changeStatusSchema = z.object({
   status: statusSchema,
+  expectedStatus: statusSchema,
   reason: z.string().trim().max(500).optional(),
   customerId: customerIdSchema.optional(),
   imageUrl: imageUrlSchema.optional(),
@@ -108,18 +109,20 @@ const bulkStatusItemSchema = z.object({
   imageUrl: imageUrlSchema.optional(),
 });
 
-export const bulkStatusSchema = z.object({
-  ids: z
-    .array(objectIdSchema)
-    .min(1, "ids must not be empty")
-    .max(200, "Too many ids in one request"),
-  status: statusSchema,
-  reason: z.string().trim().max(500).optional(),
-  // Optional per-id supplements applied inside the same transaction as the
-  // status change. Keys must be valid product ids; entries for ids not in
-  // `ids` are ignored by the service.
-  supplements: z.record(objectIdSchema, bulkStatusItemSchema).optional(),
-});
+export const bulkStatusSchema = z
+  .object({
+    ids: z
+      .array(objectIdSchema)
+      .min(1, "ids must not be empty")
+      .max(200, "Too many ids in one request"),
+    status: statusSchema,
+    reason: z.string().trim().max(500).optional(),
+    supplements: z.record(objectIdSchema, bulkStatusItemSchema).optional(),
+    expectedStatuses: z.record(objectIdSchema, statusSchema),
+  })
+  .refine((data) => data.ids.every((id) => id in data.expectedStatuses), {
+    message: "expectedStatuses must include an entry for every id",
+  });
 
 export const listQuerySchema = z.object({
   search: z.string().trim().min(1).max(120).optional(),

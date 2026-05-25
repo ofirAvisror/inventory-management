@@ -425,12 +425,19 @@ export function ProductsListPage() {
         return;
       }
 
+      const expectedStatuses: Record<string, ProductStatusValue> = {};
+      for (const id of idsToSend) {
+        const p = statusModalProducts.find((x) => x.id === id);
+        if (p) expectedStatuses[id] = p.status;
+      }
+
       bulkStatus.mutate(
         {
           ids: idsToSend,
           status: payload.status,
           reason: payload.reason,
           supplements: supplementsById,
+          expectedStatuses,
         },
         {
           onSuccess: (result) => {

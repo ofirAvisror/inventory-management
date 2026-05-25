@@ -125,6 +125,7 @@ export async function changeStatusHandler(
       id,
       {
         status: body.status as ProductStatusValue,
+        expectedStatus: body.expectedStatus as ProductStatusValue,
         reason: body.reason,
         customerId: body.customerId,
         imageUrl: body.imageUrl,
@@ -163,7 +164,8 @@ export async function bulkStatusHandler(
       body.status as ProductStatusValue,
       actorContext(req, body.reason),
       body.reason,
-      body.supplements
+      body.supplements,
+      body.expectedStatuses as Record<string, ProductStatusValue>
     );
     res.json(result);
   } catch (err) {
