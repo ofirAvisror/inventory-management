@@ -4,7 +4,7 @@ import { uploadProductImage } from "../api";
 // produces a fresh `File` instance, so a different cache key. WeakMap entries
 // are also cleaned up automatically once the staged file is no longer
 // referenced anywhere in the component tree.
-export type ImageUploadCache = WeakMap<File, string>;
+export type ImageUploadCache = WeakMap<File, Promise<string>>;
 
 export function createImageUploadCache(): ImageUploadCache {
   return new WeakMap();
@@ -20,7 +20,13 @@ export async function uploadProductImageOnce(
 ): Promise<string> {
   const cached = cache.get(file);
   if (cached) return cached;
-  const uploaded = await uploadProductImage(file);
-  cache.set(file, uploaded.url);
-  return uploaded.url;
+
+  const pending = uploadProductImage(file)
+    .then((uploaded) => uploaded.url)
+    .catch((err) => {
+      cache.delete(file);
+      throw err;
+    });
+  cache.set(file, pending);
+  return pending;
 }

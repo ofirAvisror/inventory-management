@@ -21,7 +21,7 @@ async function bootstrap(): Promise<void> {
       origin: (origin, callback) => {
         if (!origin) return callback(null, true);
         if (env.FRONTEND_ORIGINS.includes(origin)) return callback(null, true);
-        return callback(new Error(`Origin not allowed: ${origin}`));
+        return callback(null, false);
       },
       credentials: true,
     })

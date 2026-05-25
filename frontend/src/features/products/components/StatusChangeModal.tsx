@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Alert } from "../../../components/ui/Alert";
 import { Button } from "../../../components/ui/Button";
@@ -70,8 +70,13 @@ export function StatusChangeModal({
     Record<string, ProductSupplement>
   >({});
 
+  const prevOpenRef = useRef(false);
+
   useEffect(() => {
-    if (!open) return;
+    const justOpened = open && !prevOpenRef.current;
+    prevOpenRef.current = open;
+    if (!justOpened) return;
+
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setStatus(initialStatus);
     setReason("");
