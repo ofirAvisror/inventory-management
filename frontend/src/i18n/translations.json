@@ -92,6 +92,17 @@
         "errorBody": "This verification link is invalid or has expired.",
         "missingToken": "The verification link is missing a token.",
         "goToLogin": "Continue to sign in"
+      },
+      "resend": {
+        "prompt": "Need a new verification link? We can send another email.",
+        "submit": "Resend verification email",
+        "submitting": "Sending…",
+        "success": "If an unverified account exists for this email, a new verification link has been sent.",
+        "error": "Could not send the verification email. Please try again."
+      },
+      "unverified": {
+        "loginHint": "Your email address has not been verified yet.",
+        "registerHint": "You already signed up with this email but have not verified it yet."
       }
     },
     "common": {
@@ -472,6 +483,17 @@
         "errorBody": "קישור האימות אינו תקין או שתוקפו פג.",
         "missingToken": "חסר טוקן בקישור האימות.",
         "goToLogin": "מעבר להתחברות"
+      },
+      "resend": {
+        "prompt": "צריך קישור אימות חדש? אפשר לשלוח מייל נוסף.",
+        "submit": "שליחת מייל אימות מחדש",
+        "submitting": "שולח…",
+        "success": "אם קיים חשבון שלא אומת עבור האימייל הזה, נשלח אליו קישור אימות חדש.",
+        "error": "לא ניתן לשלוח את מייל האימות. נסו שוב."
+      },
+      "unverified": {
+        "loginHint": "כתובת האימייל שלך עדיין לא אומתה.",
+        "registerHint": "כבר נרשמת עם האימייל הזה, אך טרם אימתת אותו."
       }
     },
     "common": {

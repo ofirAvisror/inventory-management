@@ -41,8 +41,15 @@ export async function registerUser(
   email: string,
   password: string
 ): Promise<RegisterResult> {
-  const existing = await User.findOne({ email }).lean();
+  const existing = await User.findOne({ email });
   if (existing) {
+    if (!existing.isEmailVerified) {
+      throw new HttpError(
+        409,
+        AUTH_ERROR_CODES.EMAIL_EXISTS_UNVERIFIED,
+        "An account with this email already exists but is not verified yet"
+      );
+    }
     throw new HttpError(
       409,
       AUTH_ERROR_CODES.EMAIL_ALREADY_EXISTS,

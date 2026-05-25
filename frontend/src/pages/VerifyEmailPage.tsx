@@ -5,6 +5,7 @@ import { AuthLayout } from "../components/layout/AuthLayout";
 import { Alert } from "../components/ui/Alert";
 import { api, extractErrorMessage } from "../lib/api";
 import { paths } from "../routes/paths";
+import { ResendVerification } from "../features/auth/components/ResendVerification";
 
 type Status = "pending" | "success" | "error";
 
@@ -104,9 +105,12 @@ export function VerifyEmailPage() {
 
   return (
     <AuthLayout title={t("auth.verify.errorTitle")} footer={loginLink}>
-      <Alert variant="error">
-        {errorMessage ?? t("auth.verify.errorBody")}
-      </Alert>
+      <div className="flex flex-col gap-4">
+        <Alert variant="error">
+          {errorMessage ?? t("auth.verify.errorBody")}
+        </Alert>
+        <ResendVerification showEmailField />
+      </div>
     </AuthLayout>
   );
 }

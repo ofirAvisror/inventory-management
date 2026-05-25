@@ -9,7 +9,8 @@ import { Alert } from "../components/ui/Alert";
 import { SubmitButton } from "../components/ui/SubmitButton";
 import { TextField } from "../components/ui/TextField";
 import { useAuth } from "../contexts/AuthContext";
-import { api, extractErrorMessage } from "../lib/api";
+import { ResendVerification } from "../features/auth/components/ResendVerification";
+import { api, toApiError } from "../lib/api";
 import { buildEmailSchema } from "../lib/validation";
 import { paths } from "../routes/paths";
 
@@ -37,6 +38,8 @@ export function LoginPage() {
   const location = useLocation();
   const { user, refresh } = useAuth();
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [showResend, setShowResend] = useState(false);
+  const [resendEmail, setResendEmail] = useState("");
 
   const redirectTo = safeInternalPath(
     (location.state as LocationState)?.from,
@@ -65,12 +68,18 @@ export function LoginPage() {
 
   const onSubmit = handleSubmit(async (values) => {
     setSubmitError(null);
+    setShowResend(false);
     try {
       await api.post("/api/auth/login", values);
       await refresh();
       navigate(redirectTo, { replace: true });
     } catch (error) {
-      setSubmitError(extractErrorMessage(error, t("auth.errors.generic")));
+      const apiError = toApiError(error, t("auth.errors.generic"));
+      setSubmitError(apiError.message);
+      if (apiError.code === "EMAIL_NOT_VERIFIED") {
+        setResendEmail(values.email);
+        setShowResend(true);
+      }
     }
   });
 
@@ -92,6 +101,15 @@ export function LoginPage() {
     >
       <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
         {submitError ? <Alert variant="error">{submitError}</Alert> : null}
+
+        {showResend ? (
+          <>
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+              {t("auth.unverified.loginHint")}
+            </p>
+            <ResendVerification initialEmail={resendEmail} />
+          </>
+        ) : null}
 
         <TextField
           label={t("auth.fields.email")}

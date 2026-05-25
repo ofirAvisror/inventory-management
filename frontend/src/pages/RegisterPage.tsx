@@ -8,9 +8,10 @@ import { AuthLayout } from "../components/layout/AuthLayout";
 import { Alert } from "../components/ui/Alert";
 import { SubmitButton } from "../components/ui/SubmitButton";
 import { TextField } from "../components/ui/TextField";
-import { api, extractErrorMessage } from "../lib/api";
+import { api, toApiError } from "../lib/api";
 import { buildEmailSchema, buildPasswordSchema } from "../lib/validation";
 import { paths } from "../routes/paths";
+import { ResendVerification } from "../features/auth/components/ResendVerification";
 
 type RegisterFormValues = {
   email: string;
@@ -22,6 +23,7 @@ export function RegisterPage() {
   const { t } = useTranslation();
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submittedEmail, setSubmittedEmail] = useState<string | null>(null);
+  const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
 
   const schema = z
     .object({
@@ -45,6 +47,7 @@ export function RegisterPage() {
 
   const onSubmit = handleSubmit(async (values) => {
     setSubmitError(null);
+    setUnverifiedEmail(null);
     try {
       await api.post("/api/auth/register", {
         email: values.email,
@@ -52,7 +55,11 @@ export function RegisterPage() {
       });
       setSubmittedEmail(values.email);
     } catch (error) {
-      setSubmitError(extractErrorMessage(error, t("auth.errors.generic")));
+      const apiError = toApiError(error, t("auth.errors.generic"));
+      setSubmitError(apiError.message);
+      if (apiError.code === "EMAIL_EXISTS_UNVERIFIED") {
+        setUnverifiedEmail(values.email);
+      }
     }
   });
 
@@ -71,6 +78,7 @@ export function RegisterPage() {
         }
       >
         <Alert variant="success">{t("auth.register.successBody")}</Alert>
+        <ResendVerification initialEmail={submittedEmail} />
       </AuthLayout>
     );
   }
@@ -93,6 +101,15 @@ export function RegisterPage() {
     >
       <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
         {submitError ? <Alert variant="error">{submitError}</Alert> : null}
+
+        {unverifiedEmail ? (
+          <>
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+              {t("auth.unverified.registerHint")}
+            </p>
+            <ResendVerification initialEmail={unverifiedEmail} />
+          </>
+        ) : null}
 
         <TextField
           label={t("auth.fields.email")}
