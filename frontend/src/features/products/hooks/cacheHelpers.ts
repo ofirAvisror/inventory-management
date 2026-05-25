@@ -1,5 +1,5 @@
 import type { QueryClient } from "@tanstack/react-query";
-import { productKeys } from "../api";
+import { getProduct, productKeys } from "../api";
 import type {
   ListProductsResult,
   ProductStatusValue,
@@ -160,4 +160,63 @@ export function findProductsInLists(
 
 export async function invalidateProductLists(qc: QueryClient): Promise<void> {
   await qc.invalidateQueries({ queryKey: productKeys.lists() });
+}
+
+export function getCachedProductsByIds(
+  qc: QueryClient,
+  ids: string[],
+): { byId: Map<string, PublicProduct>; missingIds: string[] } {
+  const byId = new Map<string, PublicProduct>();
+  for (const product of findProductsInLists(qc, ids)) {
+    byId.set(product.id, product);
+  }
+  for (const id of ids) {
+    if (byId.has(id)) continue;
+    const detail = qc.getQueryData<PublicProduct>(productKeys.detail(id));
+    if (detail) byId.set(id, detail);
+  }
+  const missingIds = ids.filter((id) => !byId.has(id));
+  return { byId, missingIds };
+}
+
+export function orderProductsByIds(
+  ids: string[],
+  byId: Map<string, PublicProduct>,
+): PublicProduct[] {
+  return ids.flatMap((id) => {
+    const product = byId.get(id);
+    return product ? [product] : [];
+  });
+}
+
+export async function fetchProductsByIds(
+  qc: QueryClient,
+  ids: string[],
+): Promise<{ fulfilled: PublicProduct[]; rejectedIds: string[] }> {
+  if (ids.length === 0) {
+    return { fulfilled: [], rejectedIds: [] };
+  }
+
+  const results = await Promise.allSettled(
+    ids.map((id) =>
+      qc.fetchQuery({
+        queryKey: productKeys.detail(id),
+        queryFn: () => getProduct(id),
+      }),
+    ),
+  );
+
+  const fulfilled: PublicProduct[] = [];
+  const rejectedIds: string[] = [];
+
+  results.forEach((result, index) => {
+    const id = ids[index];
+    if (result.status === "fulfilled") {
+      fulfilled.push(result.value);
+      return;
+    }
+    rejectedIds.push(id);
+  });
+
+  return { fulfilled, rejectedIds };
 }

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useSearchParams } from "react-router-dom";
 import { AppLayout } from "../components/layout/AppLayout";
@@ -31,6 +31,10 @@ import {
   findProductsInLists,
 } from "../features/products/hooks/cacheHelpers";
 import {
+  useStatusModalProducts,
+  type StatusModalState,
+} from "../features/products/hooks/useStatusModalProducts";
+import {
   useBulkDeleteMutation,
   useBulkStatusMutation,
   useChangeStatusMutation,
@@ -54,7 +58,6 @@ import {
 import {
   isProductStatusValue,
   PRODUCT_ERROR_CODES,
-  ProductStatus,
   type BulkFailureItem,
   type BulkResult,
   type ListProductsQuery,
@@ -65,10 +68,6 @@ import { toApiError } from "../lib/api";
 import { useDebouncedValue } from "../lib/useDebouncedValue";
 import { paths } from "../routes/paths";
 import { useQueryClient } from "@tanstack/react-query";
-
-type StatusModalState =
-  | { open: false }
-  | { open: true; target: StatusChangeTarget };
 
 type DeleteModalState =
   | { open: false }
@@ -97,22 +96,6 @@ function parseStatusParam(raw: string | null): ProductStatusValue | "" {
   const parsed = Number(raw);
   if (!Number.isFinite(parsed)) return "";
   return isProductStatusValue(parsed) ? parsed : "";
-}
-
-function productStubForId(id: string): PublicProduct {
-  return {
-    id,
-    name: id,
-    sku: id.slice(-8),
-    macAddress: "00:00:00:00:00:00",
-    imei: null,
-    customerId: null,
-    status: ProductStatus.StockIn,
-    statusLabel: String(ProductStatus.StockIn),
-    imageUrl: null,
-    createdAt: "",
-    updatedAt: "",
-  };
 }
 
 export function ProductsListPage() {
@@ -163,6 +146,13 @@ export function ProductsListPage() {
     productSku: string | null;
   }>({ open: false, productId: null, productSku: null });
   const [bulkResult, setBulkResult] = useState<BulkResultPayload | null>(null);
+  const handledUnresolvedRef = useRef("");
+
+  const {
+    products: statusModalProducts,
+    isLoading: statusModalProductsLoading,
+    unresolvedIds: statusModalUnresolvedIds,
+  } = useStatusModalProducts(qc, statusModal);
 
   const items = productsQuery.data?.items ?? [];
   const total = productsQuery.data?.total ?? 0;
@@ -244,9 +234,48 @@ export function ProductsListPage() {
   };
 
   const closeStatusModal = () => {
+    handledUnresolvedRef.current = "";
     setStatusModal({ open: false });
     setStatusServerError(null);
   };
+
+  useEffect(() => {
+    if (!statusModal.open || statusModalUnresolvedIds.length === 0) return;
+
+    const key = [...statusModalUnresolvedIds].sort().join(",");
+    if (handledUnresolvedRef.current === key) return;
+    handledUnresolvedRef.current = key;
+
+    const removedSet = new Set(statusModalUnresolvedIds);
+    toast({
+      variant: "error",
+      title: t("products.errors.statusChangeFailed"),
+      description: translateProductErrorCode(
+        PRODUCT_ERROR_CODES.NOT_FOUND,
+        t("products.errors.codes.NOT_FOUND"),
+        t,
+      ),
+    });
+
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      for (const id of statusModalUnresolvedIds) next.delete(id);
+      return next;
+    });
+
+    if (statusModal.target.mode !== "bulk") return;
+
+    const remaining = statusModal.target.ids.filter((id) => !removedSet.has(id));
+    if (remaining.length === 0) {
+      closeStatusModal();
+      return;
+    }
+
+    setStatusModal({
+      open: true,
+      target: { mode: "bulk", ids: remaining, total: remaining.length },
+    });
+  }, [statusModal, statusModalUnresolvedIds, t, toast]);
 
   const openDeleteModal = (target: DeleteTarget) =>
     setDeleteModal({ open: true, target });
@@ -262,16 +291,6 @@ export function ProductsListPage() {
 
   const closeAudit = () =>
     setAuditDrawer((state) => ({ ...state, open: false }));
-
-  const statusModalProducts = useMemo((): PublicProduct[] => {
-    if (!statusModal.open) return [];
-    if (statusModal.target.mode === "single") {
-      return [statusModal.target.product];
-    }
-    const found = findProductsInLists(qc, statusModal.target.ids);
-    const byId = new Map(found.map((p) => [p.id, p]));
-    return statusModal.target.ids.map((id) => byId.get(id) ?? productStubForId(id));
-  }, [statusModal, qc]);
 
   // Uploads any pending image files for products that have gaps for the target
   // status. The status mutation is the atomic boundary: customerId / imageUrl
@@ -592,6 +611,7 @@ export function ProductsListPage() {
   const statusModalTarget = statusModal.open ? statusModal.target : null;
   const statusPending =
     statusPreparing ||
+    statusModalProductsLoading ||
     (statusModalTarget?.mode === "single" && changeStatusOne.isPending) ||
     (statusModalTarget?.mode === "bulk" && bulkStatus.isPending);
 
@@ -678,6 +698,7 @@ export function ProductsListPage() {
         open={statusModal.open}
         target={statusModalTarget}
         products={statusModalProducts}
+        productsLoading={statusModalProductsLoading}
         pending={statusPending}
         serverError={statusServerError}
         onCancel={closeStatusModal}

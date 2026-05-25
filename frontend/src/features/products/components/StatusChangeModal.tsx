@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Alert } from "../../../components/ui/Alert";
+import { Spinner } from "../../../components/ui/FullPageSpinner";
 import { Button } from "../../../components/ui/Button";
 import { Modal } from "../../../components/ui/Modal";
 import { useAdmin } from "../../../contexts/AdminContext";
@@ -36,6 +37,7 @@ type StatusChangeModalProps = {
   open: boolean;
   target: StatusChangeTarget | null;
   products: PublicProduct[];
+  productsLoading?: boolean;
   pending: boolean;
   serverError: unknown | null;
   onCancel: () => void;
@@ -46,6 +48,7 @@ export function StatusChangeModal({
   open,
   target,
   products,
+  productsLoading = false,
   pending,
   serverError,
   onCancel,
@@ -71,6 +74,7 @@ export function StatusChangeModal({
   >({});
 
   const prevOpenRef = useRef(false);
+  const prevProductsLoadingRef = useRef(false);
 
   useEffect(() => {
     const justOpened = open && !prevOpenRef.current;
@@ -83,6 +87,28 @@ export function StatusChangeModal({
     setExpandedId(null);
     setSupplements(buildInitialSupplements(products, initialStatus));
   }, [open, initialStatus, products]);
+
+  useEffect(() => {
+    const justFinishedLoading =
+      prevProductsLoadingRef.current &&
+      !productsLoading &&
+      open &&
+      target?.mode === "bulk" &&
+      products.length > 0;
+    prevProductsLoadingRef.current = productsLoading;
+
+    if (!justFinishedLoading) return;
+
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSupplements(buildInitialSupplements(products, status));
+    const firstIncomplete = products.find((p) => {
+      const gaps = getStatusGaps(p, status);
+      return hasAnyGap(gaps);
+    });
+    setExpandedId(firstIncomplete?.id ?? null);
+  }, [productsLoading, products, open, target, status]);
+
+  const isBusy = pending || productsLoading;
 
   const handleStatusChange = (nextStatus: ProductStatusValue) => {
     setStatus(nextStatus);
@@ -132,7 +158,7 @@ export function StatusChangeModal({
     : emptySupplement();
 
   const submitDisabled =
-    pending ||
+    isBusy ||
     !canSubmitStatusChange({
       products,
       targetStatus: status,
@@ -160,13 +186,13 @@ export function StatusChangeModal({
     setSupplements((current) => ({ ...current, [id]: next }));
   };
 
-  const showBulkSummary = !isSingle && needsDetailsCount > 0;
-  const showBulkProductList = !isSingle && products.length > 0;
+  const showBulkSummary = !isSingle && !productsLoading && needsDetailsCount > 0;
+  const showBulkProductList = !isSingle && !productsLoading && products.length > 0;
 
   return (
     <Modal
       open={open}
-      onClose={pending ? () => undefined : onCancel}
+      onClose={isBusy ? () => undefined : onCancel}
       title={title}
       size="lg"
       footer={
@@ -174,7 +200,7 @@ export function StatusChangeModal({
           <Button
             variant="secondary"
             onClick={onCancel}
-            disabled={pending}
+            disabled={isBusy}
             className="w-full sm:w-auto"
           >
             {t("common.cancel")}
@@ -194,7 +220,20 @@ export function StatusChangeModal({
       }
     >
       <div className="flex flex-col gap-4">
-        {isSingle && currentStatus ? (
+        {productsLoading ? (
+          <div
+            role="status"
+            aria-live="polite"
+            className="flex flex-col items-center justify-center gap-2 py-6"
+          >
+            <Spinner className="h-6 w-6" />
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+              {t("common.loading")}
+            </p>
+          </div>
+        ) : null}
+
+        {!productsLoading && isSingle && currentStatus ? (
           <div className="flex items-center gap-2 text-sm">
             <span className="text-zinc-600 dark:text-zinc-400">
               {t("products.statusModal.currentLabel")}:
@@ -203,6 +242,7 @@ export function StatusChangeModal({
           </div>
         ) : null}
 
+        {!productsLoading ? (
         <label className="flex flex-col gap-1.5 text-sm">
           <span className="font-medium text-zinc-700 dark:text-zinc-300">
             {t("products.statusModal.targetLabel")}
@@ -214,7 +254,7 @@ export function StatusChangeModal({
                 Number(event.target.value) as ProductStatusValue,
               )
             }
-            disabled={pending}
+            disabled={isBusy}
             className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2.5 text-sm shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-500/30 dark:border-zinc-700 dark:bg-zinc-950"
           >
             {PRODUCT_STATUS_VALUES.map((s) => (
@@ -224,13 +264,15 @@ export function StatusChangeModal({
             ))}
           </select>
         </label>
+        ) : null}
 
-        {isNoChange ? (
+        {!productsLoading && isNoChange ? (
           <p className="text-xs text-zinc-500 dark:text-zinc-400">
             {t("products.statusModal.noChange")}
           </p>
         ) : null}
 
+        {!productsLoading ? (
         <label className="flex flex-col gap-1.5 text-sm">
           <span className="font-medium text-zinc-700 dark:text-zinc-300">
             {t("products.statusModal.reasonLabel")}
@@ -240,13 +282,14 @@ export function StatusChangeModal({
             onChange={(event) => setReason(event.target.value)}
             rows={3}
             maxLength={500}
-            disabled={pending}
+            disabled={isBusy}
             placeholder={t("products.statusModal.reasonPlaceholder")}
             className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-500/30 dark:border-zinc-700 dark:bg-zinc-950"
           />
         </label>
+        ) : null}
 
-        {isSingle && singleProduct && singleHasGaps && singleGaps ? (
+        {!productsLoading && isSingle && singleProduct && singleHasGaps && singleGaps ? (
           <StatusSupplementFields
             productId={singleProduct.id}
             gaps={singleGaps}
@@ -254,7 +297,7 @@ export function StatusChangeModal({
             onSupplementChange={(next) =>
               updateSupplement(singleProduct.id, next)
             }
-            disabled={pending}
+            disabled={isBusy}
           />
         ) : null}
 
@@ -288,14 +331,14 @@ export function StatusChangeModal({
                       current === product.id ? null : product.id,
                     )
                   }
-                  disabled={pending}
+                  disabled={isBusy}
                 />
               );
             })}
           </div>
         ) : null}
 
-        {target.mode === "bulk" ? (
+        {!productsLoading && target.mode === "bulk" ? (
           <Alert variant="success">{t("products.statusModal.bulkNote")}</Alert>
         ) : null}
 
