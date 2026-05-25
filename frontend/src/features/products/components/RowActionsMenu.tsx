@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { createPortal } from "react-dom";
 
 type RowActionsMenuProps = {
+  onEdit: () => void;
   onChangeStatus: () => void;
   onDelete: () => void;
   onViewAudit: () => void;
@@ -27,6 +28,7 @@ function useIsMobileSheet() {
 }
 
 export function RowActionsMenu({
+  onEdit,
   onChangeStatus,
   onDelete,
   onViewAudit,
@@ -67,6 +69,7 @@ export function RowActionsMenu({
   }, [open, isMobileSheet]);
 
   const items: Array<{ label: string; onClick: () => void; danger?: boolean }> = [
+    { label: t("products.row.edit"), onClick: onEdit },
     { label: t("products.row.changeStatus"), onClick: onChangeStatus },
     { label: t("products.row.viewAudit"), onClick: onViewAudit },
     { label: t("products.row.delete"), onClick: onDelete, danger: true },

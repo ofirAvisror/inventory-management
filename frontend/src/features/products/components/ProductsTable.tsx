@@ -106,6 +106,7 @@ export function ProductsTable({
             lang={lang}
             onToggle={() => onToggleOne(product.id)}
             onOpen={() => navigate(paths.productDetail(product.id))}
+            onEdit={() => navigate(paths.productEdit(product.id))}
             onChangeStatus={() => onChangeStatus(product)}
             onDelete={() => onDelete(product)}
             onViewAudit={() => onViewAudit(product)}
@@ -284,6 +285,7 @@ export function ProductsTable({
                   >
                     <div className="flex justify-end">
                       <RowActionsMenu
+                        onEdit={() => navigate(paths.productEdit(product.id))}
                         onChangeStatus={() => onChangeStatus(product)}
                         onDelete={() => onDelete(product)}
                         onViewAudit={() => onViewAudit(product)}

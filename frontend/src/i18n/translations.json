@@ -265,6 +265,7 @@
       "row": {
         "openDetails": "Open product details",
         "menu": "Row actions",
+        "edit": "Edit product",
         "changeStatus": "Change status",
         "delete": "Delete",
         "viewAudit": "View audit log",
@@ -670,6 +671,7 @@
       "row": {
         "openDetails": "פתיחת פרטי מוצר",
         "menu": "פעולות שורה",
+        "edit": "עריכת מוצר",
         "changeStatus": "שינוי סטטוס",
         "delete": "מחיקה",
         "viewAudit": "צפייה ביומן",

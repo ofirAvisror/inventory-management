@@ -2,7 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useMemo, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { useTranslation } from "react-i18next";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "../components/layout/AppLayout";
 import { Alert } from "../components/ui/Alert";
@@ -150,7 +150,23 @@ function ProductDetailLoaded({
   const { t } = useTranslation();
   const { toast } = useToast();
   const qc = useQueryClient();
-  const [mode, setMode] = useState<Mode>("view");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [mode, setMode] = useState<Mode>(() =>
+    searchParams.get("edit") === "1" ? "edit" : "view",
+  );
+
+  const clearEditParam = () => {
+    if (!searchParams.has("edit")) return;
+    const next = new URLSearchParams(searchParams);
+    next.delete("edit");
+    setSearchParams(next, { replace: true });
+  };
+
+  const enterEditMode = () => setMode("edit");
+  const exitEditMode = () => {
+    setMode("view");
+    clearEditParam();
+  };
 
   // Status change modal state. Audit log refetches once the change settles.
   const [statusModalTarget, setStatusModalTarget] =
@@ -242,15 +258,12 @@ function ProductDetailLoaded({
 
       <section className="rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
         {mode === "view" ? (
-          <ProductReadOnly
-            product={product}
-            onEdit={() => setMode("edit")}
-          />
+          <ProductReadOnly product={product} onEdit={enterEditMode} />
         ) : (
           <ProductEditCard
             product={product}
-            onCancel={() => setMode("view")}
-            onSaved={() => setMode("view")}
+            onCancel={exitEditMode}
+            onSaved={exitEditMode}
           />
         )}
       </section>

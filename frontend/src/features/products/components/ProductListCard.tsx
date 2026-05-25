@@ -9,6 +9,7 @@ type ProductListCardProps = {
   lang: string;
   onToggle: () => void;
   onOpen: () => void;
+  onEdit: () => void;
   onChangeStatus: () => void;
   onDelete: () => void;
   onViewAudit: () => void;
@@ -20,6 +21,7 @@ export function ProductListCard({
   lang,
   onToggle,
   onOpen,
+  onEdit,
   onChangeStatus,
   onDelete,
   onViewAudit,
@@ -86,6 +88,7 @@ export function ProductListCard({
           onKeyDown={(event) => event.stopPropagation()}
         >
           <RowActionsMenu
+            onEdit={onEdit}
             onChangeStatus={onChangeStatus}
             onDelete={onDelete}
             onViewAudit={onViewAudit}

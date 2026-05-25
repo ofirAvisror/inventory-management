@@ -8,5 +8,6 @@ export const paths = {
   products: "/products",
   productNew: "/products/new",
   productDetail: (id: string) => `/products/${id}`,
+  productEdit: (id: string) => `/products/${id}?edit=1`,
   productDetailPattern: "/products/:id",
 } as const;
