@@ -72,7 +72,10 @@ export function ExportMenu({
         downloadCsv(filename, buildCsv(rows, t));
         onSuccess(t("products.export.successCsv"));
       } else {
-        await downloadPdf(filename, rows, t, i18n.language);
+        await downloadPdf(filename, rows, t, i18n.language, {
+          scope,
+          filterQuery: filterQuery,
+        });
         onSuccess(t("products.export.successPdf"));
       }
     } catch {

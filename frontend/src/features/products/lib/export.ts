@@ -113,23 +113,59 @@ export function downloadCsv(filename: string, csv: string): void {
   downloadBlob(filename, blob);
 }
 
-let hebrewFontPromise: Promise<string | null> | null = null;
+let hebrewFontPromise: Promise<{ regular: string; bold: string } | null> | null =
+  null;
 
-// jspdf only understands TTF/OTF — it cannot parse WOFF/WOFF2 wrappers. We
-// therefore pull the upstream Noto TTF straight from the official notofonts
-// release repo via jsDelivr. The font is fetched lazily so the table page
-// pays nothing until the user actually exports Hebrew content.
-const HEBREW_TTF_URL =
-  "https://cdn.jsdelivr.net/gh/notofonts/notofonts.github.io/fonts/NotoSansHebrew/hinted/ttf/NotoSansHebrew-Regular.ttf";
+const HEBREW_FONT_REGULAR = "NotoSansHebrew-Regular.ttf";
+const HEBREW_FONT_BOLD = "NotoSansHebrew-Bold.ttf";
+const PDF_HEBREW_FONT = "NotoSansHebrew";
+const PDF_LATIN_FONT = "helvetica";
+const HEBREW_CHAR = /[\u0590-\u05FF]/;
 
-async function fetchHebrewFontBase64(): Promise<string | null> {
+// jsPDF paints glyphs left-to-right. Mirror Hebrew for PDF export without setR2L().
+function fixHebrewForPdf(text: string, rtl: boolean): string {
+  if (!rtl || !HEBREW_CHAR.test(text)) return text;
+
+  if (/^[\d\s./:-]+$/.test(text)) return text;
+
+  // Strings with digits/parentheses: reverse Hebrew words only, keep numbers as-is.
+  if (/[0-9()]/.test(text)) {
+    return text.replace(/[\u0590-\u05FF]+/g, (word) =>
+      [...word].reverse().join(""),
+    );
+  }
+
+  // Space-separated Hebrew: reverse word order, then reverse letters in each word.
+  return text
+    .split(/(\s+)/)
+    .map((part) => {
+      if (/^\s+$/.test(part)) return part;
+      if (!HEBREW_CHAR.test(part)) return part;
+      return [...part].reverse().join("");
+    })
+    .reverse()
+    .join("");
+}
+
+// Bundled under /public/fonts so PDF export works offline and without CDN failures.
+async function loadHebrewPdfFonts(): Promise<{ regular: string; bold: string } | null> {
   if (!hebrewFontPromise) {
     hebrewFontPromise = (async () => {
       try {
-        const response = await fetch(HEBREW_TTF_URL);
-        if (!response.ok) return null;
-        const buffer = await response.arrayBuffer();
-        return arrayBufferToBase64(buffer);
+        const base = import.meta.env.BASE_URL;
+        const [regularRes, boldRes] = await Promise.all([
+          fetch(`${base}fonts/${HEBREW_FONT_REGULAR}`),
+          fetch(`${base}fonts/${HEBREW_FONT_BOLD}`),
+        ]);
+        if (!regularRes.ok || !boldRes.ok) return null;
+        const [regularBuf, boldBuf] = await Promise.all([
+          regularRes.arrayBuffer(),
+          boldRes.arrayBuffer(),
+        ]);
+        return {
+          regular: arrayBufferToBase64(regularBuf),
+          bold: arrayBufferToBase64(boldBuf),
+        };
       } catch {
         return null;
       }
@@ -148,75 +184,568 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
   return btoa(binary);
 }
 
+export type PdfExportScope = "selected" | "filtered";
+
+export type PdfExportMeta = {
+  scope: PdfExportScope;
+  filterQuery?: ListProductsQuery;
+};
+
+const PDF_MARGIN = 40;
+const PDF_BRAND_HEIGHT = 64;
+const PDF_ACCENT_HEIGHT = 3;
+
+const PDF_PALETTE = {
+  brand: [24, 24, 27] as [number, number, number],
+  accent: [59, 130, 246] as [number, number, number],
+  headerText: [250, 250, 250] as [number, number, number],
+  subtitleText: [161, 161, 170] as [number, number, number],
+  metaBg: [244, 244, 245] as [number, number, number],
+  metaBorder: [228, 228, 231] as [number, number, number],
+  bodyText: [39, 39, 42] as [number, number, number],
+  muted: [113, 113, 122] as [number, number, number],
+  tableHead: [39, 39, 42] as [number, number, number],
+  rowAlt: [250, 250, 250] as [number, number, number],
+  footerLine: [228, 228, 231] as [number, number, number],
+};
+
+const STATUS_PDF_COLORS: Record<
+  ProductStatusValue,
+  { bg: [number, number, number]; text: [number, number, number] }
+> = {
+  1: { bg: [228, 228, 231], text: [39, 39, 42] },
+  2: { bg: [224, 242, 254], text: [7, 89, 133] },
+  3: { bg: [254, 243, 199], text: [146, 64, 14] },
+  4: { bg: [237, 233, 254], text: [91, 33, 182] },
+  5: { bg: [209, 250, 229], text: [6, 95, 70] },
+};
+
+interface PdfColumnSpec {
+  key: keyof PublicProduct | "statusLabel";
+  header: string;
+  width: number;
+}
+
+function pdfColumns(t: TFunction): PdfColumnSpec[] {
+  return [
+    { key: "name", header: t("products.columns.product"), width: 130 },
+    { key: "sku", header: t("products.columns.sku"), width: 88 },
+    { key: "macAddress", header: t("products.columns.macAddress"), width: 98 },
+    { key: "imei", header: t("products.columns.imei"), width: 92 },
+    { key: "customerId", header: t("products.columns.customerId"), width: 88 },
+    { key: "statusLabel", header: t("products.columns.status"), width: 108 },
+    { key: "updatedAt", header: t("products.columns.updatedAt"), width: 96 },
+  ];
+}
+
+interface PdfHeaderCell {
+  text: string;
+  script: PdfScript;
+}
+
+/** PDF headers avoid mixed Hebrew/Latin in one font (Noto has Hebrew glyphs only). */
+function pdfTableHeaders(ctx: PdfLayoutContext): PdfHeaderCell[] {
+  const cols = pdfColumns(ctx.t);
+  if (!ctx.isRtl) {
+    return cols.map((col) => ({ text: col.header, script: "latin" as const }));
+  }
+  const hebrewHeader = (key: PdfColumnSpec["key"]): PdfHeaderCell => {
+    const col = cols.find((c) => c.key === key);
+    return {
+      text: pdfText(ctx, col?.header ?? ""),
+      script: "hebrew",
+    };
+  };
+  return [
+    hebrewHeader("name"),
+    { text: pdfText(ctx, "מקט"), script: "hebrew" },
+    { text: "MAC", script: "latin" },
+    { text: "IMEI", script: "latin" },
+    hebrewHeader("customerId"),
+    hebrewHeader("statusLabel"),
+    hebrewHeader("updatedAt"),
+  ];
+}
+
+const EMPTY_CELL = "—";
+
+function formatPdfDate(value: unknown): string {
+  if (!value) return EMPTY_CELL;
+  const date = value instanceof Date ? value : new Date(String(value));
+  if (Number.isNaN(date.getTime())) return EMPTY_CELL;
+  const pad = (part: number) => String(part).padStart(2, "0");
+  return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function pdfCellValue(
+  row: PublicProduct,
+  key: PdfColumnSpec["key"],
+  t: TFunction,
+): string {
+  if (key === "statusLabel") return statusLabel(t, row.status);
+  if (key === "updatedAt") return formatPdfDate(row.updatedAt);
+  const value = row[key as keyof PublicProduct];
+  if (value === null || value === undefined || value === "") return EMPTY_CELL;
+  return String(value);
+}
+
+function buildFilterSummary(
+  t: TFunction,
+  filterQuery: ListProductsQuery | undefined,
+): string {
+  if (!filterQuery) return t("products.export.pdfNoFilters");
+  const parts: string[] = [];
+  if (filterQuery.search?.trim()) {
+    parts.push(
+      t("products.export.pdfFilterSearch", { value: filterQuery.search.trim() }),
+    );
+  }
+  if (filterQuery.status !== undefined) {
+    parts.push(
+      t("products.export.pdfFilterStatus", {
+        value: statusLabel(t, filterQuery.status),
+      }),
+    );
+  }
+  if (filterQuery.customerId?.trim()) {
+    parts.push(
+      t("products.export.pdfFilterCustomer", {
+        value: filterQuery.customerId.trim(),
+      }),
+    );
+  }
+  return parts.length > 0 ? parts.join(" · ") : t("products.export.pdfNoFilters");
+}
+
+function countByStatus(rows: PublicProduct[]): Map<ProductStatusValue, number> {
+  const counts = new Map<ProductStatusValue, number>();
+  for (const status of [1, 2, 3, 4, 5] as ProductStatusValue[]) {
+    counts.set(status, 0);
+  }
+  for (const row of rows) {
+    counts.set(row.status, (counts.get(row.status) ?? 0) + 1);
+  }
+  return counts;
+}
+
+type PdfScript = "hebrew" | "latin";
+
+interface PdfLayoutContext {
+  doc: import("jspdf").jsPDF;
+  hebrewFontLoaded: boolean;
+  isRtl: boolean;
+  locale: string;
+  t: TFunction;
+}
+
+function pdfText(ctx: PdfLayoutContext, text: string): string {
+  return fixHebrewForPdf(text, ctx.isRtl);
+}
+
+function pageWidth(doc: import("jspdf").jsPDF): number {
+  return doc.internal.pageSize.getWidth();
+}
+
+function pageHeight(doc: import("jspdf").jsPDF): number {
+  return doc.internal.pageSize.getHeight();
+}
+
+function textX(ctx: PdfLayoutContext, edge: "start" | "end"): number {
+  return edge === "start"
+    ? ctx.isRtl
+      ? pageWidth(ctx.doc) - PDF_MARGIN
+      : PDF_MARGIN
+    : ctx.isRtl
+      ? PDF_MARGIN
+      : pageWidth(ctx.doc) - PDF_MARGIN;
+}
+
+function align(ctx: PdfLayoutContext): "left" | "right" {
+  return ctx.isRtl ? "right" : "left";
+}
+
+function setFont(
+  ctx: PdfLayoutContext,
+  size: number,
+  style: "normal" | "bold" = "normal",
+  script: PdfScript = "hebrew",
+): void {
+  const useHebrew = script === "hebrew" && ctx.hebrewFontLoaded;
+  ctx.doc.setFont(
+    useHebrew ? PDF_HEBREW_FONT : PDF_LATIN_FONT,
+    useHebrew ? style : style === "bold" ? "bold" : "normal",
+  );
+  ctx.doc.setFontSize(size);
+}
+
+function headerScript(ctx: PdfLayoutContext): PdfScript {
+  return ctx.isRtl && ctx.hebrewFontLoaded ? "hebrew" : "latin";
+}
+
+function drawBrandHeader(ctx: PdfLayoutContext): void {
+  const { doc } = ctx;
+  const width = pageWidth(doc);
+
+  doc.setFillColor(...PDF_PALETTE.brand);
+  doc.rect(0, 0, width, PDF_BRAND_HEIGHT, "F");
+
+  doc.setFillColor(...PDF_PALETTE.accent);
+  doc.rect(0, PDF_BRAND_HEIGHT, width, PDF_ACCENT_HEIGHT, "F");
+
+  setFont(ctx, 10, "normal", headerScript(ctx));
+  doc.setTextColor(...PDF_PALETTE.subtitleText);
+  doc.text(pdfText(ctx, ctx.t("app.brandName")), textX(ctx, "start"), 22, {
+    align: align(ctx),
+  });
+
+  setFont(ctx, 20, "bold", headerScript(ctx));
+  doc.setTextColor(...PDF_PALETTE.headerText);
+  doc.text(pdfText(ctx, ctx.t("products.export.pdfReportTitle")), textX(ctx, "start"), 42, {
+    align: align(ctx),
+  });
+
+  setFont(ctx, 9, "normal", headerScript(ctx));
+  doc.setTextColor(...PDF_PALETTE.subtitleText);
+  doc.text(pdfText(ctx, ctx.t("products.export.pdfReportSubtitle")), textX(ctx, "start"), 56, {
+    align: align(ctx),
+  });
+
+  const generated = `${ctx.t("products.export.pdfGenerated")}: ${formatPdfDate(new Date())}`;
+  setFont(ctx, 8, "normal", headerScript(ctx));
+  doc.text(pdfText(ctx, generated), textX(ctx, "end"), 42, { align: align(ctx) });
+}
+
+function drawMetaPanel(
+  ctx: PdfLayoutContext,
+  y: number,
+  rows: PublicProduct[],
+  meta: PdfExportMeta,
+): number {
+  const { doc } = ctx;
+  const width = pageWidth(doc);
+  const panelX = PDF_MARGIN;
+  const panelW = width - PDF_MARGIN * 2;
+  const panelH = 52;
+
+  doc.setFillColor(...PDF_PALETTE.metaBg);
+  doc.setDrawColor(...PDF_PALETTE.metaBorder);
+  doc.setLineWidth(0.75);
+  doc.roundedRect(panelX, y, panelW, panelH, 6, 6, "FD");
+
+  const scopeLabel =
+    meta.scope === "selected"
+      ? ctx.t("products.export.scopeSelected", { count: rows.length })
+      : ctx.t("products.export.scopeFiltered");
+
+  const colGap = panelW / 3;
+  const labels = [
+    ctx.t("products.export.pdfScope"),
+    ctx.t("products.export.pdfTotal"),
+    ctx.t("products.export.pdfFilters"),
+  ];
+  const values = [scopeLabel, String(rows.length), buildFilterSummary(ctx.t, meta.filterQuery)];
+
+  labels.forEach((label, index) => {
+    const cx = panelX + colGap * index + colGap / 2;
+    setFont(ctx, 7, "normal", headerScript(ctx));
+    doc.setTextColor(...PDF_PALETTE.muted);
+    const labelText = ctx.isRtl ? pdfText(ctx, label) : label.toUpperCase();
+    doc.text(labelText, cx, y + 16, { align: "center" });
+
+    const value = values[index];
+    const valueScript: PdfScript =
+      index === 1 ? "latin" : headerScript(ctx);
+    setFont(ctx, 10, "bold", valueScript);
+    doc.setTextColor(...PDF_PALETTE.bodyText);
+    const maxWidth = colGap - 16;
+    const displayValue = index === 1 ? value : pdfText(ctx, value);
+    const lines = doc.splitTextToSize(displayValue, maxWidth) as string[];
+    doc.text(lines.slice(0, 2), cx, y + 32, { align: "center" });
+  });
+
+  return y + panelH;
+}
+
+function measureStatusChipLabel(
+  ctx: PdfLayoutContext,
+  statusText: string,
+  count: number,
+): { totalWidth: number; statusText: string; countText: string } {
+  const { doc } = ctx;
+  const countText = ` (${count})`;
+  setFont(ctx, 8, "bold", headerScript(ctx));
+  const statusWidth = doc.getTextWidth(statusText);
+  setFont(ctx, 8, "bold", "latin");
+  const countWidth = doc.getTextWidth(countText);
+  return {
+    totalWidth: statusWidth + countWidth,
+    statusText,
+    countText,
+  };
+}
+
+function drawStatusChipLabel(
+  ctx: PdfLayoutContext,
+  centerX: number,
+  y: number,
+  statusText: string,
+  countText: string,
+  totalWidth: number,
+): void {
+  const { doc } = ctx;
+  setFont(ctx, 8, "bold", "latin");
+  const countWidth = doc.getTextWidth(countText);
+  const startX = centerX - totalWidth / 2;
+  doc.text(countText, startX, y);
+  setFont(ctx, 8, "bold", headerScript(ctx));
+  doc.text(statusText, startX + countWidth, y);
+}
+
+function drawStatusSummary(
+  ctx: PdfLayoutContext,
+  y: number,
+  rows: PublicProduct[],
+): number {
+  const { doc } = ctx;
+  const counts = countByStatus(rows);
+  const chipHeight = 22;
+  const gap = 8;
+
+  setFont(ctx, 8, "bold", headerScript(ctx));
+  doc.setTextColor(...PDF_PALETTE.bodyText);
+  doc.text(
+    pdfText(ctx, ctx.t("products.export.pdfStatusBreakdown")),
+    textX(ctx, "start"),
+    y + 4,
+    { align: align(ctx) },
+  );
+
+  let x = ctx.isRtl ? pageWidth(doc) - PDF_MARGIN : PDF_MARGIN;
+  let rowY = y + 18;
+
+  for (const status of [1, 2, 3, 4, 5] as ProductStatusValue[]) {
+    const count = counts.get(status) ?? 0;
+    const statusText = pdfText(ctx, statusLabel(ctx.t, status));
+    const chipLabel = measureStatusChipLabel(ctx, statusText, count);
+    const chipW = chipLabel.totalWidth + 20;
+
+    if (!ctx.isRtl && x + chipW > pageWidth(doc) - PDF_MARGIN) {
+      x = PDF_MARGIN;
+      rowY += chipHeight + gap;
+    }
+    if (ctx.isRtl && x - chipW < PDF_MARGIN) {
+      x = pageWidth(doc) - PDF_MARGIN;
+      rowY += chipHeight + gap;
+    }
+
+    const chipX = ctx.isRtl ? x - chipW : x;
+    const colors = STATUS_PDF_COLORS[status];
+    doc.setFillColor(...colors.bg);
+    doc.setDrawColor(...colors.bg);
+    doc.roundedRect(chipX, rowY, chipW, chipHeight, chipHeight / 2, chipHeight / 2, "F");
+    doc.setTextColor(...colors.text);
+    drawStatusChipLabel(
+      ctx,
+      chipX + chipW / 2,
+      rowY + 14,
+      chipLabel.statusText,
+      chipLabel.countText,
+      chipLabel.totalWidth,
+    );
+
+    x = ctx.isRtl ? chipX - gap : chipX + chipW + gap;
+  }
+
+  return rowY + chipHeight + 10;
+}
+
+function drawCompactPageHeader(ctx: PdfLayoutContext): void {
+  const { doc } = ctx;
+  const width = pageWidth(doc);
+  const height = 36;
+
+  doc.setFillColor(...PDF_PALETTE.brand);
+  doc.rect(0, 0, width, height, "F");
+
+  doc.setFillColor(...PDF_PALETTE.accent);
+  doc.rect(0, height, width, 2, "F");
+
+  setFont(ctx, 11, "bold", headerScript(ctx));
+  doc.setTextColor(...PDF_PALETTE.headerText);
+  doc.text(pdfText(ctx, ctx.t("products.export.pdfReportTitle")), textX(ctx, "start"), 22, {
+    align: align(ctx),
+  });
+
+  setFont(ctx, 8, "normal", headerScript(ctx));
+  doc.setTextColor(...PDF_PALETTE.subtitleText);
+  doc.text(pdfText(ctx, ctx.t("app.brandName")), textX(ctx, "end"), 22, {
+    align: align(ctx),
+  });
+}
+
+function drawPageFooter(
+  ctx: PdfLayoutContext,
+  pageNumber: number,
+  pageCount: number,
+): void {
+  const { doc } = ctx;
+  const y = pageHeight(doc) - 24;
+  const width = pageWidth(doc);
+
+  doc.setDrawColor(...PDF_PALETTE.footerLine);
+  doc.setLineWidth(0.5);
+  doc.line(PDF_MARGIN, y - 8, width - PDF_MARGIN, y - 8);
+
+  setFont(ctx, 7, "normal", headerScript(ctx));
+  doc.setTextColor(...PDF_PALETTE.muted);
+  doc.text(pdfText(ctx, ctx.t("products.export.pdfFooter")), width / 2, y, {
+    align: "center",
+  });
+  setFont(ctx, 7, "normal", "latin");
+  doc.text(`${pageNumber} / ${pageCount}`, textX(ctx, "end"), y, {
+    align: align(ctx),
+  });
+}
+
 export async function downloadPdf(
   filename: string,
   rows: PublicProduct[],
   t: TFunction,
   language: string,
+  meta?: PdfExportMeta,
 ): Promise<void> {
-  // Lazy-load jspdf so the table page does not ship it in the initial chunk.
   const { default: JsPDF } = await import("jspdf");
   const autotable = (await import("jspdf-autotable")).default;
 
-  const doc = new JsPDF({ orientation: "landscape", unit: "pt" });
-
-  // Accept "he", "he-IL", "HE", etc. so locale variants are still rendered
-  // with Hebrew rules instead of falling through to the Helvetica path.
   const isHebrewLocale = language.toLowerCase().startsWith("he");
+  const locale = isHebrewLocale ? "he-IL" : "en-US";
+  const doc = new JsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
 
-  // We can only commit to the Hebrew font if it actually loads. If the CDN
-  // fetch fails we fall back to Helvetica so the PDF still renders (Latin
-  // text and digits stay readable; Hebrew glyphs will be missing, but that
-  // is strictly better than crashing on an unregistered font).
-  let tableFont: "NotoSansHebrew" | "helvetica" = "helvetica";
+  let hebrewFontLoaded = false;
   if (isHebrewLocale) {
-    const fontBase64 = await fetchHebrewFontBase64();
-    if (fontBase64) {
-      doc.addFileToVFS("NotoSansHebrew.ttf", fontBase64);
-      doc.addFont("NotoSansHebrew.ttf", "NotoSansHebrew", "normal");
-      doc.setFont("NotoSansHebrew");
-      doc.setR2L(true);
-      tableFont = "NotoSansHebrew";
+    const fonts = await loadHebrewPdfFonts();
+    if (fonts) {
+      doc.addFileToVFS(HEBREW_FONT_REGULAR, fonts.regular);
+      doc.addFileToVFS(HEBREW_FONT_BOLD, fonts.bold);
+      doc.addFont(HEBREW_FONT_REGULAR, PDF_HEBREW_FONT, "normal");
+      doc.addFont(HEBREW_FONT_BOLD, PDF_HEBREW_FONT, "bold");
+      hebrewFontLoaded = true;
     }
   }
 
-  const cols = columns(t);
-  const head = [cols.map((c) => c.header)];
+  doc.setFont(PDF_LATIN_FONT, "normal");
+
+  const ctx: PdfLayoutContext = {
+    doc,
+    hebrewFontLoaded,
+    isRtl: isHebrewLocale,
+    locale,
+    t,
+  };
+  const exportMeta: PdfExportMeta = meta ?? { scope: "filtered" };
+  const tableHalign: "left" | "right" = isHebrewLocale ? "right" : "left";
+
+  drawBrandHeader(ctx);
+  let cursorY = PDF_BRAND_HEIGHT + PDF_ACCENT_HEIGHT + 14;
+  cursorY = drawMetaPanel(ctx, cursorY, rows, exportMeta);
+  cursorY = drawStatusSummary(ctx, cursorY, rows);
+
+  const cols = pdfColumns(t);
+  const tableHeaders = pdfTableHeaders(ctx);
+  const statusColIndex = cols.findIndex((c) => c.key === "statusLabel");
+  const head = [tableHeaders.map((h) => h.text)];
   const body = rows.map((row) =>
     cols.map((c) => {
-      if (c.key === "statusLabel") return statusLabel(t, row.status);
-      return cellValue(row, c.key);
+      const raw = pdfCellValue(row, c.key, t);
+      if (c.key === "statusLabel") {
+        return fixHebrewForPdf(raw, isHebrewLocale);
+      }
+      return raw;
     }),
   );
+
+  const tableWidth = cols.reduce((sum, col) => sum + col.width, 0);
 
   autotable(doc, {
     head,
     body,
-    margin: { top: 60, right: 24, bottom: 36, left: 24 },
+    startY: cursorY + 4,
+    margin: { top: 48, right: PDF_MARGIN, bottom: 44, left: PDF_MARGIN },
+    tableWidth,
     styles: {
-      font: tableFont,
-      fontSize: 8,
-      cellPadding: 4,
+      font: PDF_LATIN_FONT,
+      fontSize: 8.5,
+      halign: tableHalign,
+      cellPadding: { top: 6, right: 5, bottom: 6, left: 5 },
       overflow: "linebreak",
+      lineColor: PDF_PALETTE.metaBorder,
+      lineWidth: 0.25,
+      textColor: PDF_PALETTE.bodyText,
+      valign: "middle",
     },
     headStyles: {
-      fillColor: [39, 39, 42],
-      textColor: 255,
-      font: tableFont,
+      fillColor: PDF_PALETTE.tableHead,
+      textColor: [255, 255, 255],
+      font: PDF_LATIN_FONT,
+      fontStyle: "bold",
+      fontSize: 8,
+      halign: tableHalign,
+      cellPadding: { top: 7, right: 5, bottom: 7, left: 5 },
     },
-    didDrawPage: () => {
-      doc.setFontSize(12);
-      doc.setFont(tableFont, "normal");
-      doc.text(t("products.title"), 24, 36);
-      doc.setFontSize(8);
-      doc.text(
-        new Date().toLocaleString(isHebrewLocale ? "he-IL" : "en-US"),
-        doc.internal.pageSize.getWidth() - 24,
-        36,
-        { align: "right" },
-      );
+    alternateRowStyles: {
+      fillColor: PDF_PALETTE.rowAlt,
+    },
+    columnStyles: Object.fromEntries(
+      cols.map((col, index) => [index, { cellWidth: col.width }]),
+    ),
+    didParseCell: (data) => {
+      const useHebrewCell = hebrewFontLoaded && isHebrewLocale;
+      if (data.section === "head") {
+        const header = tableHeaders[data.column.index];
+        if (header) {
+          data.cell.text = [header.text];
+          const useHebrewFont =
+            useHebrewCell && header.script === "hebrew";
+          data.cell.styles.font = useHebrewFont
+            ? PDF_HEBREW_FONT
+            : PDF_LATIN_FONT;
+          data.cell.styles.fontStyle = "bold";
+        }
+        return;
+      }
+
+      if (data.section === "body" && data.column.index === statusColIndex) {
+        const row = rows[data.row.index];
+        if (!row) return;
+        const colors = STATUS_PDF_COLORS[row.status];
+        data.cell.styles.fillColor = colors.bg;
+        data.cell.styles.textColor = colors.text;
+        data.cell.styles.fontStyle = "bold";
+        if (useHebrewCell) {
+          data.cell.styles.font = PDF_HEBREW_FONT;
+        } else {
+          data.cell.text = [row.statusLabel];
+        }
+        return;
+      }
+
+      if (data.section === "body") {
+        data.cell.styles.font = PDF_LATIN_FONT;
+        data.cell.styles.fontStyle = "normal";
+      }
+    },
+    didDrawPage: (data) => {
+      if (data.pageNumber > 1) {
+        drawCompactPageHeader(ctx);
+      }
     },
   });
+
+  const totalPages = doc.getNumberOfPages();
+  for (let page = 1; page <= totalPages; page++) {
+    doc.setPage(page);
+    drawPageFooter(ctx, page, totalPages);
+  }
 
   doc.save(filename);
 }
