@@ -360,7 +360,19 @@
         "successCsv": "CSV downloaded",
         "successPdf": "PDF downloaded",
         "failed": "Export failed",
-        "noItems": "Nothing to export"
+        "noItems": "Nothing to export",
+        "pdfReportTitle": "Inventory Report",
+        "pdfReportSubtitle": "Product catalog export",
+        "pdfGenerated": "Generated",
+        "pdfScope": "Scope",
+        "pdfTotal": "Total products",
+        "pdfFilters": "Filters",
+        "pdfNoFilters": "No active filters",
+        "pdfFilterSearch": "Search: {{value}}",
+        "pdfFilterStatus": "Status: {{value}}",
+        "pdfFilterCustomer": "Customer: {{value}}",
+        "pdfPage": "Page {{page}} of {{pages}}",
+        "pdfFooter": "StockMaster · Confidential inventory data"
       },
       "errors": {
         "MAC_INVALID": "Invalid MAC address format.",
@@ -751,7 +763,19 @@
         "successCsv": "קובץ CSV הורד",
         "successPdf": "קובץ PDF הורד",
         "failed": "הייצוא נכשל",
-        "noItems": "אין מה לייצא"
+        "noItems": "אין מה לייצא",
+        "pdfReportTitle": "דוח מלאי",
+        "pdfReportSubtitle": "ייצוא קטלוג מוצרים",
+        "pdfGenerated": "נוצר",
+        "pdfScope": "היקף",
+        "pdfTotal": "סה\"כ מוצרים",
+        "pdfFilters": "סינונים",
+        "pdfNoFilters": "ללא סינון פעיל",
+        "pdfFilterSearch": "חיפוש: {{value}}",
+        "pdfFilterStatus": "סטטוס: {{value}}",
+        "pdfFilterCustomer": "לקוח: {{value}}",
+        "pdfPage": "עמוד {{page}} מתוך {{pages}}",
+        "pdfFooter": "StockMaster · נתוני מלאי חסויים"
       },
       "errors": {
         "MAC_INVALID": "כתובת MAC לא תקינה.",
