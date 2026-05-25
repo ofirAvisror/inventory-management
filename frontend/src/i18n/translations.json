@@ -1,0 +1,762 @@
+{
+  "en": {
+    "app": {
+      "brandName": "StockMaster",
+      "title": "Account",
+      "logout": "Sign out",
+      "theme": {
+        "toLight": "Switch to light mode",
+        "toDark": "Switch to dark mode"
+      }
+    },
+    "language": {
+      "label": "Language",
+      "en": "English",
+      "he": "Hebrew"
+    },
+    "admin": {
+      "toggle": {
+        "label": "Admin",
+        "on": "Acting as admin",
+        "off": "Acting as regular user",
+        "lockedOn": "Your account is admin"
+      }
+    },
+    "auth": {
+      "fields": {
+        "email": "Email",
+        "emailPlaceholder": "you@example.com",
+        "password": "Password",
+        "newPassword": "New password",
+        "passwordPlaceholder": "••••••••",
+        "confirmPassword": "Confirm password",
+        "showPassword": "Show password",
+        "hidePassword": "Hide password"
+      },
+      "errors": {
+        "emailRequired": "Email is required",
+        "emailInvalid": "Enter a valid email",
+        "passwordRequired": "Password is required",
+        "passwordMin": "Password must be at least 8 characters",
+        "passwordLowercase": "Password must contain a lowercase letter",
+        "passwordUppercase": "Password must contain an uppercase letter",
+        "passwordDigit": "Password must contain a digit",
+        "passwordsMismatch": "Passwords do not match",
+        "generic": "Something went wrong. Please try again."
+      },
+      "login": {
+        "title": "Sign in",
+        "subtitle": "Welcome back. Enter your details to continue.",
+        "submit": "Sign in",
+        "submitting": "Signing in…",
+        "forgotPassword": "Forgot your password?",
+        "noAccount": "Don't have an account?",
+        "registerCta": "Create one"
+      },
+      "register": {
+        "title": "Create your account",
+        "subtitle": "Sign up with your email to get started.",
+        "submit": "Create account",
+        "submitting": "Creating account…",
+        "haveAccount": "Already have an account?",
+        "loginCta": "Sign in",
+        "successTitle": "Check your inbox",
+        "successBody": "We sent a verification link to your email. Click it to activate your account."
+      },
+      "forgot": {
+        "title": "Forgot password",
+        "subtitle": "Enter the email linked to your account and we'll send a reset link.",
+        "submit": "Send reset link",
+        "submitting": "Sending…",
+        "backToLogin": "Back to sign in",
+        "successTitle": "Check your inbox",
+        "successBody": "If an account exists for this email, a password reset link has been sent."
+      },
+      "reset": {
+        "title": "Choose a new password",
+        "subtitle": "Pick a strong password you haven't used before.",
+        "submit": "Update password",
+        "submitting": "Updating…",
+        "backToLogin": "Back to sign in",
+        "successTitle": "Password updated",
+        "successBody": "Your password has been updated. You can now sign in with the new one.",
+        "errorTitle": "Reset link issue",
+        "missingToken": "This reset link is missing a token. Please request a new one."
+      },
+      "verify": {
+        "verifyingTitle": "Verifying your email",
+        "verifyingSubtitle": "One moment while we activate your account…",
+        "successTitle": "Email verified",
+        "successBody": "Your account is now active. You can sign in.",
+        "errorTitle": "Verification failed",
+        "errorBody": "This verification link is invalid or has expired.",
+        "missingToken": "The verification link is missing a token.",
+        "goToLogin": "Continue to sign in"
+      }
+    },
+    "common": {
+      "cancel": "Cancel",
+      "close": "Close",
+      "confirm": "Confirm",
+      "save": "Save",
+      "loading": "Loading…",
+      "error": "Error",
+      "search": "Search",
+      "clear": "Clear",
+      "actions": "Actions",
+      "of": "of",
+      "page": "Page",
+      "previous": "Previous",
+      "next": "Next",
+      "selected": "selected",
+      "yes": "Yes",
+      "no": "No",
+      "notifications": "Notifications",
+      "dismiss": "Dismiss"
+    },
+    "pwa": {
+      "updateAvailable": "Update available",
+      "updateDescription": "A new version of StockMaster is ready.",
+      "reload": "Reload",
+      "offlineReady": "Ready for offline use",
+      "offlineReadyDescription": "The app shell is cached and can load without a network connection.",
+      "installTitle": "Install StockMaster",
+      "installDescription": "Add the app to your home screen for quick access.",
+      "install": "Install",
+      "installDismiss": "Not now"
+    },
+    "products": {
+      "title": "Products",
+      "subtitle": "Manage your inventory",
+      "createCta": "Create product",
+      "stub": {
+        "createTitle": "Create product",
+        "detailTitle": "Product details",
+        "body": "This screen is not implemented yet. The products table page is the focus of this iteration.",
+        "back": "Back to products"
+      },
+      "detail": {
+        "title": "Product details",
+        "subtitle": "Review and edit the product, and audit its status history.",
+        "back": "← Back to products",
+        "editCta": "Edit",
+        "changeStatusCta": "Change status",
+        "auditTitle": "Audit log",
+        "auditSubtitle": "Status change history",
+        "createdAt": "Created",
+        "updatedAt": "Last updated",
+        "empty": "—",
+        "noImage": "No image",
+        "loadErrorTitle": "Could not load this product",
+        "loadErrorBody": "Try again, or go back to the products list.",
+        "retry": "Try again",
+        "notFoundTitle": "Product not found",
+        "notFoundBody": "This product may have been deleted or the link is incorrect.",
+        "edit": {
+          "title": "Edit product",
+          "subtitle": "Update the product details. Status changes have a dedicated action.",
+          "save": "Save changes",
+          "saving": "Saving…",
+          "cancel": "Discard",
+          "errors": {
+            "submitFailed": "Could not save the changes."
+          },
+          "success": {
+            "title": "Product updated",
+            "description": "\"{{name}}\" was saved successfully."
+          }
+        }
+      },
+      "create": {
+        "title": "Create product",
+        "subtitle": "Add a new item to your inventory.",
+        "back": "← Back to products",
+        "submit": "Create product",
+        "submitting": "Creating…",
+        "cancel": "Cancel",
+        "fields": {
+          "name": "Name",
+          "sku": "SKU",
+          "macAddress": "MAC address",
+          "imei": "IMEI",
+          "status": "Initial status",
+          "customerId": "Customer ID",
+          "image": "Product image"
+        },
+        "placeholders": {
+          "name": "e.g. Router XR500",
+          "sku": "e.g. RTR-XR500-01",
+          "macAddress": "AA:BB:CC:DD:EE:FF",
+          "imei": "14 or 15 digits",
+          "customerId": "Customer identifier"
+        },
+        "hints": {
+          "skuUpper": "SKU will be saved in uppercase.",
+          "macFormat": "Format: AA:BB:CC:DD:EE:FF (separators ':' or '-').",
+          "customerRequired": "Required when status is \"Assigned to Customer\" or higher.",
+          "imageRequired": "Required when status is \"Ready for Delivery\" or higher."
+        },
+        "advanced": {
+          "toggleShow": "Advanced options (status, customer, image)",
+          "toggleHide": "Hide advanced options"
+        },
+        "image": {
+          "drop": "Drop an image here, or click to browse.",
+          "browse": "Choose file",
+          "replace": "Replace",
+          "remove": "Remove",
+          "uploading": "Uploading…",
+          "uploaded": "Image ready",
+          "tooLarge": "Image is too large (max {{max}} MB).",
+          "badType": "Unsupported file type. Use PNG, JPG, WEBP or GIF."
+        },
+        "errors": {
+          "nameRequired": "Name is required.",
+          "nameTooLong": "Name is too long (max 120 characters).",
+          "skuRequired": "SKU is required.",
+          "skuTooLong": "SKU is too long (max 64 characters).",
+          "macRequired": "MAC address is required.",
+          "customerIdTooLong": "Customer ID is too long (max 120 characters).",
+          "imageUrlInvalid": "The image URL is not valid.",
+          "submitFailed": "Could not create the product."
+        },
+        "success": {
+          "title": "Product created",
+          "description": "\"{{name}}\" was added to your inventory."
+        }
+      },
+      "status": {
+        "1": "Stock In",
+        "2": "Assigned to Customer",
+        "3": "Configuration In",
+        "4": "Ready for Delivery",
+        "5": "Delivered"
+      },
+      "filters": {
+        "searchLabel": "Search",
+        "searchPlaceholder": "Search by name, SKU, MAC, IMEI or customer",
+        "statusLabel": "Status",
+        "statusAll": "All statuses",
+        "customerLabel": "Customer ID",
+        "customerPlaceholder": "Exact customer ID",
+        "clear": "Clear filters"
+      },
+      "columns": {
+        "product": "Product",
+        "sku": "SKU",
+        "image": "Image",
+        "macAddress": "MAC Address",
+        "imei": "IMEI",
+        "customerId": "Customer ID",
+        "status": "Status",
+        "updatedAt": "Updated"
+      },
+      "row": {
+        "openDetails": "Open product details",
+        "menu": "Row actions",
+        "changeStatus": "Change status",
+        "delete": "Delete",
+        "viewAudit": "View audit log",
+        "noImage": "No image"
+      },
+      "selection": {
+        "selectAll": "Select all on this page",
+        "selectRow": "Select row"
+      },
+      "table": {
+        "empty": "No products match the current filters.",
+        "errorTitle": "Could not load products",
+        "errorRetry": "Try again"
+      },
+      "pagination": {
+        "rangeSummary": "{{from}}-{{to}} of {{total}}",
+        "perPage": "Per page",
+        "previous": "Previous page",
+        "next": "Next page"
+      },
+      "bulkBar": {
+        "countSelected": "{{count}} selected",
+        "changeStatus": "Change status",
+        "delete": "Delete",
+        "clearSelection": "Clear selection"
+      },
+      "statusModal": {
+        "singleTitle": "Change status",
+        "bulkTitle": "Change status for {{count}} products",
+        "currentLabel": "Current status",
+        "targetLabel": "New status",
+        "reasonLabel": "Reason (optional)",
+        "reasonPlaceholder": "Why is this status change happening?",
+        "submit": "Apply",
+        "submitting": "Applying…",
+        "noChange": "Pick a different status to continue.",
+        "summaryNeedsCompletion": "{{incomplete}} of {{total}} products still need details before you can apply.",
+        "rowOk": "Ready",
+        "rowMissing": "Missing details",
+        "expandRow": "Show required fields for {{name}}",
+        "collapseRow": "Hide required fields for {{name}}",
+        "warnings": {
+          "customerMissing": "Status 2 and above requires a customer ID. This product does not have one yet — edit the product first.",
+          "imageMissing": "Status 4 and above requires an image. This product does not have one yet — edit the product first.",
+          "demotion": "Moving a product out of Delivered requires admin privileges. Turn on \"Admin\" before applying."
+        },
+        "editProductCta": "Open product to edit",
+        "bulkNote": "Items that don't meet the rules will fail individually. We'll show you exactly which ones."
+      },
+      "deleteModal": {
+        "singleTitle": "Delete product",
+        "bulkTitle": "Delete {{count}} products",
+        "singleBody": "Are you sure you want to delete \"{{name}}\"? This cannot be undone.",
+        "bulkBody": "Are you sure you want to delete the {{count}} selected products? This cannot be undone.",
+        "confirmTypeLabel": "Type DELETE to confirm",
+        "submit": "Delete",
+        "submitting": "Deleting…"
+      },
+      "bulkResult": {
+        "title": "Bulk operation result",
+        "summary": "{{ok}} succeeded, {{failed}} failed.",
+        "allOk": "All {{ok}} items completed successfully.",
+        "successHeader": "Succeeded ({{count}})",
+        "failureHeader": "Failed ({{count}})",
+        "failedLine": "{{sku}} — {{name}}",
+        "retry": "Retry failed",
+        "copy": "Copy summary",
+        "copied": "Copied",
+        "rawDetails": "Server response"
+      },
+      "audit": {
+        "title": "Audit log",
+        "subtitle": "Status change history for {{sku}}",
+        "empty": "No status changes recorded yet.",
+        "actor": {
+          "admin": "Admin",
+          "user": "User"
+        },
+        "from": "From",
+        "to": "To",
+        "reason": "Reason",
+        "createdAt": "Recorded at",
+        "loadError": "Could not load the audit log."
+      },
+      "export": {
+        "label": "Export",
+        "csv": "Export to CSV",
+        "pdf": "Export to PDF",
+        "scopeSelected": "Selected ({{count}})",
+        "scopeFiltered": "All matching filters",
+        "filenamePrefix": "products",
+        "preparing": "Preparing export…",
+        "successCsv": "CSV downloaded",
+        "successPdf": "PDF downloaded",
+        "failed": "Export failed",
+        "noItems": "Nothing to export"
+      },
+      "errors": {
+        "MAC_INVALID": "Invalid MAC address format.",
+        "IMEI_INVALID": "IMEI must be 14 or 15 digits.",
+        "CUSTOMER_REQUIRED": "Missing customer ID for this status.",
+        "IMAGE_REQUIRED": "An image is required for status 4 (Ready for Delivery) and above.",
+        "STATUS_INVALID": "Invalid status value.",
+        "DEMOTION_FORBIDDEN": "Only an admin can move a product out of Delivered.",
+        "NOT_FOUND": "Product not found.",
+        "SKU_DUPLICATE": "A product with this SKU already exists.",
+        "INVALID_ID": "Invalid product ID.",
+        "VALIDATION_ERROR": "The request was rejected by validation.",
+        "UPLOAD_FAILED": "Image upload failed.",
+        "UPLOAD_REQUIRED": "An image file is required.",
+        "UPLOAD_TYPE_INVALID": "Unsupported image type.",
+        "unknown": "Unexpected error.",
+        "loadProducts": "Could not load products.",
+        "deleteFailed": "Could not delete the product.",
+        "statusChangeFailed": "Could not change the status.",
+        "bulkPartial": "{{ok}} succeeded, {{failed}} failed. Open details to retry."
+      },
+      "success": {
+        "deleted": "Product deleted",
+        "statusChanged": "Status updated",
+        "bulkDeleted": "{{count}} products deleted",
+        "bulkStatusChanged": "{{count}} products updated"
+      }
+    }
+  },
+  "he": {
+    "app": {
+      "brandName": "סטוקמאסטר",
+      "title": "חשבון",
+      "logout": "התנתקות",
+      "theme": {
+        "toLight": "מעבר למצב בהיר",
+        "toDark": "מעבר למצב כהה"
+      }
+    },
+    "language": {
+      "label": "שפה",
+      "en": "אנגלית",
+      "he": "עברית"
+    },
+    "admin": {
+      "toggle": {
+        "label": "מנהל",
+        "on": "פועלים כמנהל",
+        "off": "פועלים כמשתמש רגיל",
+        "lockedOn": "המשתמש שלך מוגדר כמנהל"
+      }
+    },
+    "auth": {
+      "fields": {
+        "email": "אימייל",
+        "emailPlaceholder": "you@example.com",
+        "password": "סיסמה",
+        "newPassword": "סיסמה חדשה",
+        "passwordPlaceholder": "••••••••",
+        "confirmPassword": "אימות סיסמה",
+        "showPassword": "הצגת סיסמה",
+        "hidePassword": "הסתרת סיסמה"
+      },
+      "errors": {
+        "emailRequired": "יש להזין אימייל",
+        "emailInvalid": "כתובת אימייל לא תקינה",
+        "passwordRequired": "יש להזין סיסמה",
+        "passwordMin": "הסיסמה חייבת להיות באורך של 8 תווים לפחות",
+        "passwordLowercase": "הסיסמה חייבת לכלול אות לטינית קטנה",
+        "passwordUppercase": "הסיסמה חייבת לכלול אות לטינית גדולה",
+        "passwordDigit": "הסיסמה חייבת לכלול ספרה",
+        "passwordsMismatch": "הסיסמאות אינן תואמות",
+        "generic": "משהו השתבש. נסו שוב."
+      },
+      "login": {
+        "title": "התחברות",
+        "subtitle": "ברוכים השבים. הזינו את הפרטים כדי להמשיך.",
+        "submit": "התחברות",
+        "submitting": "מתחבר…",
+        "forgotPassword": "שכחת סיסמה?",
+        "noAccount": "אין לך חשבון?",
+        "registerCta": "צור חשבון"
+      },
+      "register": {
+        "title": "יצירת חשבון",
+        "subtitle": "הירשם עם האימייל שלך כדי להתחיל.",
+        "submit": "צור חשבון",
+        "submitting": "יוצר חשבון…",
+        "haveAccount": "יש לך כבר חשבון?",
+        "loginCta": "התחברות",
+        "successTitle": "בדוק את תיבת הדואר שלך",
+        "successBody": "שלחנו קישור אימות לאימייל שלך. לחץ עליו כדי להפעיל את החשבון."
+      },
+      "forgot": {
+        "title": "שכחת סיסמה",
+        "subtitle": "הזן את האימייל המקושר לחשבונך ונשלח קישור לאיפוס.",
+        "submit": "שלח קישור איפוס",
+        "submitting": "שולח…",
+        "backToLogin": "חזרה להתחברות",
+        "successTitle": "בדוק את תיבת הדואר שלך",
+        "successBody": "אם קיים חשבון לאימייל זה, נשלח אליו קישור לאיפוס סיסמה."
+      },
+      "reset": {
+        "title": "בחירת סיסמה חדשה",
+        "subtitle": "בחר סיסמה חזקה שלא השתמשת בה בעבר.",
+        "submit": "עדכון סיסמה",
+        "submitting": "מעדכן…",
+        "backToLogin": "חזרה להתחברות",
+        "successTitle": "הסיסמה עודכנה",
+        "successBody": "הסיסמה עודכנה בהצלחה. אפשר להתחבר עם הסיסמה החדשה.",
+        "errorTitle": "בעיה בקישור האיפוס",
+        "missingToken": "חסר טוקן בקישור האיפוס. נא לבקש קישור חדש."
+      },
+      "verify": {
+        "verifyingTitle": "מאמת את כתובת האימייל שלך",
+        "verifyingSubtitle": "רגע אחד, אנחנו מפעילים את החשבון…",
+        "successTitle": "האימייל אומת",
+        "successBody": "החשבון שלך פעיל. אפשר להתחבר.",
+        "errorTitle": "האימות נכשל",
+        "errorBody": "קישור האימות אינו תקין או שתוקפו פג.",
+        "missingToken": "חסר טוקן בקישור האימות.",
+        "goToLogin": "מעבר להתחברות"
+      }
+    },
+    "common": {
+      "cancel": "ביטול",
+      "close": "סגירה",
+      "confirm": "אישור",
+      "save": "שמירה",
+      "loading": "טוען…",
+      "error": "שגיאה",
+      "search": "חיפוש",
+      "clear": "נקה",
+      "actions": "פעולות",
+      "of": "מתוך",
+      "page": "עמוד",
+      "previous": "הקודם",
+      "next": "הבא",
+      "selected": "נבחרו",
+      "yes": "כן",
+      "no": "לא",
+      "notifications": "התראות",
+      "dismiss": "סגירה"
+    },
+    "pwa": {
+      "updateAvailable": "עדכון זמין",
+      "updateDescription": "גרסה חדשה של StockMaster מוכנה.",
+      "reload": "רענון",
+      "offlineReady": "מוכן לשימוש ללא חיבור",
+      "offlineReadyDescription": "ממשק האפליקציה נשמר במטמון ויכול להיטען גם בלי חיבור לרשת.",
+      "installTitle": "התקנת StockMaster",
+      "installDescription": "הוסיפו את האפליקציה למסך הבית לגישה מהירה.",
+      "install": "התקנה",
+      "installDismiss": "לא עכשיו"
+    },
+    "products": {
+      "title": "מוצרים",
+      "subtitle": "ניהול המלאי",
+      "createCta": "מוצר חדש",
+      "stub": {
+        "createTitle": "מוצר חדש",
+        "detailTitle": "פרטי מוצר",
+        "body": "המסך הזה עוד לא מומש. במחזור הנוכחי התמקדנו בעמוד טבלת המוצרים.",
+        "back": "חזרה למוצרים"
+      },
+      "detail": {
+        "title": "פרטי מוצר",
+        "subtitle": "צפייה ועריכה של המוצר וצפייה בהיסטוריית הסטטוסים שלו.",
+        "back": "→ חזרה למוצרים",
+        "editCta": "עריכה",
+        "changeStatusCta": "שינוי סטטוס",
+        "auditTitle": "יומן שינויים",
+        "auditSubtitle": "היסטוריית שינויי סטטוס",
+        "createdAt": "נוצר",
+        "updatedAt": "עודכן לאחרונה",
+        "empty": "—",
+        "noImage": "אין תמונה",
+        "loadErrorTitle": "טעינת המוצר נכשלה",
+        "loadErrorBody": "נסו שוב, או חזרו לרשימת המוצרים.",
+        "retry": "נסה שוב",
+        "notFoundTitle": "המוצר לא נמצא",
+        "notFoundBody": "ייתכן שהמוצר נמחק או שהקישור שגוי.",
+        "edit": {
+          "title": "עריכת מוצר",
+          "subtitle": "עדכון פרטי המוצר. שינוי סטטוס מתבצע בפעולה ייעודית.",
+          "save": "שמירת שינויים",
+          "saving": "שומר…",
+          "cancel": "ביטול",
+          "errors": {
+            "submitFailed": "שמירת השינויים נכשלה."
+          },
+          "success": {
+            "title": "המוצר עודכן",
+            "description": "\"{{name}}\" נשמר בהצלחה."
+          }
+        }
+      },
+      "create": {
+        "title": "מוצר חדש",
+        "subtitle": "הוספת פריט חדש למלאי.",
+        "back": "→ חזרה למוצרים",
+        "submit": "צור מוצר",
+        "submitting": "יוצר…",
+        "cancel": "ביטול",
+        "fields": {
+          "name": "שם",
+          "sku": "מק\"ט",
+          "macAddress": "כתובת MAC",
+          "imei": "IMEI",
+          "status": "סטטוס התחלתי",
+          "customerId": "מזהה לקוח",
+          "image": "תמונת מוצר"
+        },
+        "placeholders": {
+          "name": "לדוגמה: ראוטר XR500",
+          "sku": "לדוגמה: RTR-XR500-01",
+          "macAddress": "AA:BB:CC:DD:EE:FF",
+          "imei": "14 או 15 ספרות",
+          "customerId": "מזהה לקוח"
+        },
+        "hints": {
+          "skuUpper": "המק\"ט יישמר באותיות גדולות.",
+          "macFormat": "פורמט: AA:BB:CC:DD:EE:FF (מפריד ':' או '-').",
+          "customerRequired": "נדרש כאשר הסטטוס הוא \"שויך ללקוח\" ומעלה.",
+          "imageRequired": "נדרש כאשר הסטטוס הוא \"מוכן למשלוח\" ומעלה."
+        },
+        "advanced": {
+          "toggleShow": "אפשרויות מתקדמות (סטטוס, לקוח, תמונה)",
+          "toggleHide": "הסתרת אפשרויות מתקדמות"
+        },
+        "image": {
+          "drop": "גררו תמונה לכאן, או לחצו לבחירת קובץ.",
+          "browse": "בחירת קובץ",
+          "replace": "החלפה",
+          "remove": "הסרה",
+          "uploading": "מעלה…",
+          "uploaded": "התמונה מוכנה",
+          "tooLarge": "התמונה גדולה מדי (מקסימום {{max}} מ\"ב).",
+          "badType": "סוג קובץ לא נתמך. השתמשו ב-PNG, JPG, WEBP או GIF."
+        },
+        "errors": {
+          "nameRequired": "יש להזין שם.",
+          "nameTooLong": "השם ארוך מדי (מקסימום 120 תווים).",
+          "skuRequired": "יש להזין מק\"ט.",
+          "skuTooLong": "המק\"ט ארוך מדי (מקסימום 64 תווים).",
+          "macRequired": "יש להזין כתובת MAC.",
+          "customerIdTooLong": "מזהה הלקוח ארוך מדי (מקסימום 120 תווים).",
+          "imageUrlInvalid": "כתובת התמונה אינה תקינה.",
+          "submitFailed": "יצירת המוצר נכשלה."
+        },
+        "success": {
+          "title": "המוצר נוצר",
+          "description": "\"{{name}}\" נוסף למלאי."
+        }
+      },
+      "status": {
+        "1": "במלאי",
+        "2": "שויך ללקוח",
+        "3": "בתהליך הגדרה",
+        "4": "מוכן למשלוח",
+        "5": "נמסר"
+      },
+      "filters": {
+        "searchLabel": "חיפוש",
+        "searchPlaceholder": "חיפוש לפי שם, SKU, MAC, IMEI או לקוח",
+        "statusLabel": "סטטוס",
+        "statusAll": "כל הסטטוסים",
+        "customerLabel": "מזהה לקוח",
+        "customerPlaceholder": "מזהה לקוח מדויק",
+        "clear": "ניקוי סינון"
+      },
+      "columns": {
+        "product": "מוצר",
+        "sku": "מק\"ט",
+        "image": "תמונה",
+        "macAddress": "כתובת MAC",
+        "imei": "IMEI",
+        "customerId": "מזהה לקוח",
+        "status": "סטטוס",
+        "updatedAt": "עודכן"
+      },
+      "row": {
+        "openDetails": "פתיחת פרטי מוצר",
+        "menu": "פעולות שורה",
+        "changeStatus": "שינוי סטטוס",
+        "delete": "מחיקה",
+        "viewAudit": "צפייה ביומן",
+        "noImage": "אין תמונה"
+      },
+      "selection": {
+        "selectAll": "בחירת כל השורות בעמוד",
+        "selectRow": "בחירת שורה"
+      },
+      "table": {
+        "empty": "לא נמצאו מוצרים שמתאימים לסינון הנוכחי.",
+        "errorTitle": "טעינת המוצרים נכשלה",
+        "errorRetry": "נסה שוב"
+      },
+      "pagination": {
+        "rangeSummary": "{{from}}-{{to}} מתוך {{total}}",
+        "perPage": "לעמוד",
+        "previous": "עמוד קודם",
+        "next": "עמוד הבא"
+      },
+      "bulkBar": {
+        "countSelected": "{{count}} נבחרו",
+        "changeStatus": "שינוי סטטוס",
+        "delete": "מחיקה",
+        "clearSelection": "ניקוי בחירה"
+      },
+      "statusModal": {
+        "singleTitle": "שינוי סטטוס",
+        "bulkTitle": "שינוי סטטוס ל-{{count}} מוצרים",
+        "currentLabel": "סטטוס נוכחי",
+        "targetLabel": "סטטוס חדש",
+        "reasonLabel": "סיבה (לא חובה)",
+        "reasonPlaceholder": "למה מתבצע שינוי הסטטוס?",
+        "submit": "אישור",
+        "submitting": "מבצע…",
+        "noChange": "יש לבחור סטטוס שונה כדי להמשיך.",
+        "summaryNeedsCompletion": "{{incomplete}} מתוך {{total}} מוצרים עדיין דורשים השלמה לפני האישור.",
+        "rowOk": "מוכן",
+        "rowMissing": "חסרים פרטים",
+        "expandRow": "הצגת שדות חובה עבור {{name}}",
+        "collapseRow": "הסתרת שדות חובה עבור {{name}}",
+        "warnings": {
+          "customerMissing": "סטטוס 2 ומעלה דורש מזהה לקוח. במוצר הזה עוד אין — יש לערוך אותו קודם.",
+          "imageMissing": "סטטוס 4 ומעלה דורש תמונה. במוצר הזה עוד אין — יש לערוך אותו קודם.",
+          "demotion": "החזרת מוצר ממצב \"נמסר\" דורשת הרשאת מנהל. הפעילו את מצב \"מנהל\" לפני האישור."
+        },
+        "editProductCta": "פתיחת המוצר לעריכה",
+        "bulkNote": "פריטים שלא יעמדו בכללים ייכשלו בנפרד, ונציג בדיוק אילו."
+      },
+      "deleteModal": {
+        "singleTitle": "מחיקת מוצר",
+        "bulkTitle": "מחיקת {{count}} מוצרים",
+        "singleBody": "האם למחוק את \"{{name}}\"? לא ניתן לבטל את הפעולה.",
+        "bulkBody": "האם למחוק את {{count}} המוצרים הנבחרים? לא ניתן לבטל את הפעולה.",
+        "confirmTypeLabel": "כדי לאשר, הקלידו DELETE",
+        "submit": "מחק",
+        "submitting": "מוחק…"
+      },
+      "bulkResult": {
+        "title": "תוצאות פעולה מרובה",
+        "summary": "{{ok}} הצליחו, {{failed}} נכשלו.",
+        "allOk": "כל {{ok}} הפריטים הסתיימו בהצלחה.",
+        "successHeader": "הצליחו ({{count}})",
+        "failureHeader": "נכשלו ({{count}})",
+        "failedLine": "{{sku}} — {{name}}",
+        "retry": "ניסיון חוזר לנכשלים",
+        "copy": "העתקת סיכום",
+        "copied": "הועתק",
+        "rawDetails": "תגובת השרת"
+      },
+      "audit": {
+        "title": "יומן שינויים",
+        "subtitle": "היסטוריית שינויי סטטוס עבור {{sku}}",
+        "empty": "עדיין לא נרשמו שינויי סטטוס.",
+        "actor": {
+          "admin": "מנהל",
+          "user": "משתמש"
+        },
+        "from": "מ-",
+        "to": "אל",
+        "reason": "סיבה",
+        "createdAt": "תאריך הרישום",
+        "loadError": "טעינת יומן השינויים נכשלה."
+      },
+      "export": {
+        "label": "ייצוא",
+        "csv": "ייצוא ל-CSV",
+        "pdf": "ייצוא ל-PDF",
+        "scopeSelected": "המסומנים ({{count}})",
+        "scopeFiltered": "כל התואמים לסינון",
+        "filenamePrefix": "products",
+        "preparing": "מכין את הייצוא…",
+        "successCsv": "קובץ CSV הורד",
+        "successPdf": "קובץ PDF הורד",
+        "failed": "הייצוא נכשל",
+        "noItems": "אין מה לייצא"
+      },
+      "errors": {
+        "MAC_INVALID": "כתובת MAC לא תקינה.",
+        "IMEI_INVALID": "IMEI חייב להיות בן 14 או 15 ספרות.",
+        "CUSTOMER_REQUIRED": "חסר מזהה לקוח לסטטוס הזה.",
+        "IMAGE_REQUIRED": "חובה לצרף תמונה לסטטוס 4 (מוכן למשלוח) ומעלה.",
+        "STATUS_INVALID": "ערך הסטטוס לא תקין.",
+        "DEMOTION_FORBIDDEN": "רק מנהל יכול להחזיר מוצר ממצב \"נמסר\".",
+        "NOT_FOUND": "המוצר לא נמצא.",
+        "SKU_DUPLICATE": "כבר קיים מוצר עם המק\"ט הזה.",
+        "INVALID_ID": "מזהה מוצר לא תקין.",
+        "VALIDATION_ERROR": "הבקשה נדחתה בולידציה.",
+        "UPLOAD_FAILED": "העלאת התמונה נכשלה.",
+        "UPLOAD_REQUIRED": "חובה לצרף קובץ תמונה.",
+        "UPLOAD_TYPE_INVALID": "סוג קובץ לא נתמך.",
+        "unknown": "שגיאה לא צפויה.",
+        "loadProducts": "טעינת המוצרים נכשלה.",
+        "deleteFailed": "מחיקת המוצר נכשלה.",
+        "statusChangeFailed": "שינוי הסטטוס נכשל.",
+        "bulkPartial": "{{ok}} הצליחו, {{failed}} נכשלו. פתחו את הפרטים כדי לנסות שוב."
+      },
+      "success": {
+        "deleted": "המוצר נמחק",
+        "statusChanged": "הסטטוס עודכן",
+        "bulkDeleted": "{{count}} מוצרים נמחקו",
+        "bulkStatusChanged": "{{count}} מוצרים עודכנו"
+      }
+    }
+  }
+}
