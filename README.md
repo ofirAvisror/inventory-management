@@ -164,7 +164,7 @@ flowchart LR
 | `contexts/` | Auth, theme, admin override, toasts |
 | `lib/api.ts` | Shared Axios client with credentials and admin header interceptor |
 
-**Data flow:** The frontend provides UX validation only. The backend enforces MAC/IMEI format, status prerequisites, admin-only demotion from Delivered, and writes audit entries atomically with product changes (MongoDB transactions).
+**Data flow:** The frontend provides UX validation only. The backend enforces MAC/IMEI format, status prerequisites, admin-only demotion from Delivered, and writes audit entries atomically with product changes (MongoDB transactions). Status changes also use **compare-and-set**: the client sends `expectedStatus` (what it saw when opening the modal); the server updates only if MongoDB still matches, otherwise **409 `STATUS_CONFLICT`**.
 
 ## Key Decisions
 
@@ -197,6 +197,8 @@ flowchart LR
 | Audit log in MongoDB (`AuditLog` collection) | Queryable per product; transactional with status changes; scales beyond file append |
 | Admin via header **and** JWT role | Header satisfies the assignment spec; JWT role supports real admin users |
 | Dedicated `PATCH /:id/status` endpoint | Separates status workflow from field edits (assignment requirement) |
+| Compare-and-set on status change (`expectedStatus`) | Prevents last-write-wins when two admins edit the same product; audit `fromStatus` stays accurate |
+| `409 STATUS_CONFLICT` on status mismatch | Client must refresh and retry; bulk returns per-id failure in `{ success, failed }` |
 | Bulk endpoints return per-item `{ success, failed }` | Partial failure is expected; the frontend shows per-row results |
 
 ### Frontend UX
@@ -204,6 +206,8 @@ flowchart LR
 | Decision | Why |
 |---|---|
 | Optimistic UI for delete/status only | Instant feedback on frequent actions; create/update wait for the server (image upload complexity) |
+| Bulk selection persists across pages | Only one list page is fetched at a time; `selectedIds` survive page changes |
+| Resolve bulk modal products from cache, then GET | On bulk status open, ids are looked up in list + detail cache; missing ids are fetched via `GET /api/products/:id` so gap validation (customer/image) uses real data, not stubs |
 | Class-based dark mode on `<html>` | Works with Tailwind v4 `@custom-variant dark`; persists in `localStorage` |
 | Mobile-first responsive table | Assignment requires full breakpoint coverage (cards / horizontal scroll on small screens) |
 | i18n (en/he) beyond spec | Better UX for Hebrew-speaking users; UI strings remain primarily English |
@@ -279,11 +283,16 @@ Full templates with comments are in:
 | GET | `/api/products/:id` | Yes | Get product by ID |
 | PUT | `/api/products/:id` | Yes | Update product fields |
 | DELETE | `/api/products/:id` | Yes | Delete product |
-| PATCH | `/api/products/:id/status` | Yes | Change product status |
+| PATCH | `/api/products/:id/status` | Yes | Change product status (requires `expectedStatus`) |
 | GET | `/api/products/:id/audit-log` | Yes | Status change history |
 | POST | `/api/products/bulk-delete` | Yes | Bulk delete |
-| POST | `/api/products/bulk-status` | Yes | Bulk status change |
+| POST | `/api/products/bulk-status` | Yes | Bulk status change (requires `expectedStatuses` per id) |
 | POST | `/api/products/upload` | Yes | Upload product image |
+
+**Status change request bodies:**
+
+- `PATCH /api/products/:id/status` — `{ status, expectedStatus, reason?, customerId?, imageUrl? }`
+- `POST /api/products/bulk-status` — `{ ids, status, expectedStatuses, reason?, supplements? }` where `expectedStatuses` maps each id to the status the client saw before submit; `supplements` optionally supplies per-id `customerId` / `imageUrl` when the target status requires them.
 
 ## What I'd Add With More Time
 
