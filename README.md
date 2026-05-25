@@ -287,7 +287,30 @@ Full templates with comments are in:
 
 ## What I'd Add With More Time
 
-The current scope covers inventory and product lifecycle. With additional time, I would extend the system toward **customer understanding and upsell opportunities**:
+The current scope covers inventory and product lifecycle. With additional time, I would extend the system toward **customer understanding, production readiness, and self-service insights**:
+
+### Production deployment
+
+I would take the app beyond local dev and deploy it to a real production environment:
+
+- **Hosting** — containerized backend (e.g. Docker on Railway, Render, or AWS ECS) and static frontend on a CDN (Vercel, Netlify, or S3 + CloudFront).
+- **Managed MongoDB** — MongoDB Atlas with backups, connection pooling, and separate staging/production databases.
+- **Secrets and config** — environment variables via the platform's secret manager (not committed `.env` files); `COOKIE_SECURE=true`, strict CORS origins, and rotated JWT keys.
+- **CI/CD** — GitHub Actions (or GitLab CI) to run lint, typecheck, and build on every PR, and auto-deploy `main` to staging after merge.
+- **Observability** — structured logging, health checks wired to uptime monitoring, and error tracking (e.g. Sentry) for both API and frontend.
+
+### Inventory chatbot
+
+I would add a **chatbot assistant** that helps staff and managers understand sales and inventory without manually digging through tables:
+
+- **What was sold** — natural-language questions such as *"How many products were delivered this week?"* or *"Which customers received routers?"*, answered by querying products and audit logs (status transitions to Delivered, grouped by `customerId`, SKU, or date range).
+- **Product details on demand** — *"Tell me about SKU CAM-SEC-123"* or *"What's the status history of this MAC address?"* — the bot would fetch the product record and its audit trail and summarize it in plain language.
+- **Architecture sketch** — a dedicated `/api/chat` endpoint (or WebSocket) backed by an LLM with **tool calls** into existing read-only services (`listProducts`, `getProduct`, `listAuditForProduct`), so business rules stay on the backend and the model never writes directly to the database.
+- **Guardrails** — authenticated users only, rate limiting, and scoped permissions (e.g. regular users see their tenant's data; admins see full inventory).
+
+This keeps the current REST API as the source of truth while adding a conversational layer on top of the same product and audit data.
+
+### CRM and upsell layer
 
 - **Customer profile card** — a dedicated view per `customerId` showing assigned products, delivery history, status timeline, and contact details in one place (today `customerId` is only a field on the product).
 - **Needs discovery** — when a customer or prospect contacts the company, capture their use case, environment, and constraints (e.g. fleet size, connectivity, deployment stage) so the team understands *why* they need a product, not just *which* SKU was assigned.
