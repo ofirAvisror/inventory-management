@@ -137,6 +137,7 @@ export async function bulkDelete(ids: string[]): Promise<BulkResult> {
 
 export interface ChangeStatusInput {
   status: ProductStatusValue;
+  expectedStatus: ProductStatusValue;
   reason?: string;
   // Optional supplements applied atomically with the status change on the
   // server. Use these instead of a separate PUT when a status transition
@@ -167,6 +168,7 @@ export interface BulkChangeStatusInput {
   reason?: string;
   // Per-id supplements; ids not present here get no supplement.
   supplements?: Record<string, BulkStatusSupplement>;
+  expectedStatuses: Record<string, ProductStatusValue>;
 }
 
 export async function bulkChangeStatus(

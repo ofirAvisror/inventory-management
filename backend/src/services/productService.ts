@@ -413,6 +413,7 @@ export async function deleteProduct(
 
 export interface ChangeStatusInputCtx {
   status: ProductStatusValue;
+  expectedStatus: ProductStatusValue;
   reason?: string;
   // Optional supplements applied inside the same transaction as the status
   // change. Used by the UI to fill `customerId` / `imageUrl` gaps when moving
@@ -435,46 +436,58 @@ export async function changeStatus(
     );
   }
 
-  const product = await Product.findById(id);
-  if (!product) {
-    throw new HttpError(
-      404,
-      PRODUCT_ERROR_CODES.NOT_FOUND,
-      "Product not found"
-    );
-  }
-
-  const currentStatus = product.status as ProductStatusValue;
+  const expectedStatus = input.expectedStatus;
   const nextStatus = input.status;
 
-  if (currentStatus === nextStatus) {
-    // Status-only no-op. We intentionally ignore any supplements here: a
-    // "set details" call has its own dedicated endpoint (PUT /products/:id)
-    // and conflating it here would silently change product data without an
-    // audit trail.
-    return toPublic(product);
+  if (expectedStatus === nextStatus) {
+    const unchanged = await Product.findOne({ _id: id, status: expectedStatus });
+    if (!unchanged) {
+      throw new HttpError(
+        409,
+        PRODUCT_ERROR_CODES.STATUS_CONFLICT,
+        "Product status was changed by another user. Refresh and try again."
+      );
+    }
+    return toPublic(unchanged);
   }
-
-  const nextCustomerId =
-    input.customerId !== undefined
-      ? input.customerId
-      : (product.customerId ?? null);
-  const nextImageUrl =
-    input.imageUrl !== undefined
-      ? input.imageUrl
-      : (product.imageUrl ?? null);
-
-  assertDemotionAllowed(currentStatus, nextStatus, ctx.isAdmin);
-  assertStatusRequirements(nextStatus, {
-    customerId: nextCustomerId,
-    imageUrl: nextImageUrl,
-  });
 
   const session = await mongoose.startSession();
   try {
     let saved: ProductDoc | null = null;
+    let auditFromStatus: ProductStatusValue = expectedStatus;
+
     await session.withTransaction(async () => {
-      if (input.customerId !== undefined) product.customerId = input.customerId;
+      const product = await Product.findOne({
+        _id: id,
+        status: expectedStatus,
+      }).session(session);
+
+      if (!product) {
+        throw new HttpError(
+          409,
+          PRODUCT_ERROR_CODES.STATUS_CONFLICT,
+          "Product status was changed by another user. Refresh and try again."
+        );
+      }
+
+      const nextCustomerId =
+        input.customerId !== undefined
+          ? input.customerId
+          : (product.customerId ?? null);
+      const nextImageUrl =
+        input.imageUrl !== undefined
+          ? input.imageUrl
+          : (product.imageUrl ?? null);
+
+      assertDemotionAllowed(expectedStatus, nextStatus, ctx.isAdmin);
+      assertStatusRequirements(nextStatus, {
+        customerId: nextCustomerId,
+        imageUrl: nextImageUrl,
+      });
+
+      if (input.customerId !== undefined) {
+        product.customerId = input.customerId;
+      }
       if (input.imageUrl !== undefined) product.imageUrl = input.imageUrl;
       product.status = nextStatus;
       saved = await product.save({ session });
@@ -482,7 +495,7 @@ export async function changeStatus(
       await writeAuditEntry(
         {
           productId: saved._id,
-          fromStatus: currentStatus,
+          fromStatus: expectedStatus,
           toStatus: nextStatus,
           actor: actorLabel(ctx),
           actorUserId: ctx.userId,
@@ -506,21 +519,21 @@ export async function changeStatus(
       kind: "status_op",
       productId: updated.id as string,
       sku: updated.sku,
-      fromStatus: currentStatus,
+      fromStatus: auditFromStatus,
       toStatus: nextStatus,
       actor: actorLabel(ctx),
       actorUserId: ctx.userId ?? undefined,
     });
 
     if (
-      currentStatus === ProductStatus.Delivered &&
+      expectedStatus === ProductStatus.Delivered &&
       nextStatus < ProductStatus.Delivered
     ) {
       void notifyInventoryEvent({
         kind: "audit_override",
         productId: updated.id as string,
         sku: updated.sku,
-        fromStatus: currentStatus,
+        fromStatus: expectedStatus,
         toStatus: nextStatus,
         actor: actorLabel(ctx),
         actorUserId: ctx.userId ?? undefined,
@@ -589,17 +602,27 @@ export async function bulkChangeStatus(
   status: ProductStatusValue,
   ctx: ActorContext,
   reason?: string,
-  supplementsById?: Record<string, BulkStatusSupplement>
+  supplementsById?: Record<string, BulkStatusSupplement>,
+  expectedStatuses?: Record<string, ProductStatusValue>
 ): Promise<BulkResult> {
   const result: BulkResult = { success: [], failed: [] };
 
   for (const id of ids) {
     try {
       const supplement = supplementsById?.[id];
+      const expectedStatus = expectedStatuses?.[id];
+      if (expectedStatus === undefined) {
+        throw new HttpError(
+          400,
+          PRODUCT_ERROR_CODES.VALIDATION_ERROR,
+          "expectedStatuses must include an entry for every id"
+        );
+      }
       await changeStatus(
         id,
         {
           status,
+          expectedStatus,
           reason,
           customerId: supplement?.customerId,
           imageUrl: supplement?.imageUrl,

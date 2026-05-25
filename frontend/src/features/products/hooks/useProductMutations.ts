@@ -99,8 +99,14 @@ interface SingleStatusVars {
 export function useChangeStatusMutation() {
   const qc = useQueryClient();
   return useMutation<PublicProduct, unknown, SingleStatusVars, ListSnapshotCtx>({
-    mutationFn: ({ id, status, reason, customerId, imageUrl }) => {
-      const input: ChangeStatusInput = { status, reason, customerId, imageUrl };
+    mutationFn: ({ id, status, reason, customerId, imageUrl, previousStatus }) => {
+      const input: ChangeStatusInput = {
+        status,
+        expectedStatus: previousStatus,
+        reason,
+        customerId,
+        imageUrl,
+      };
       return changeStatus(id, input);
     },
     onMutate: async ({ id, status }) => {
@@ -160,13 +166,26 @@ interface BulkStatusVars {
   status: ProductStatusValue;
   reason?: string;
   supplements?: Record<string, BulkStatusSupplement>;
+  expectedStatuses: Record<string, ProductStatusValue>;
 }
 
 export function useBulkStatusMutation() {
   const qc = useQueryClient();
   return useMutation<BulkResult, unknown, BulkStatusVars, ListSnapshotCtx>({
-    mutationFn: ({ ids, status, reason, supplements }: BulkStatusVars) => {
-      const input: BulkChangeStatusInput = { ids, status, reason, supplements };
+    mutationFn: ({
+      ids,
+      status,
+      reason,
+      supplements,
+      expectedStatuses,
+    }: BulkStatusVars) => {
+      const input: BulkChangeStatusInput = {
+        ids,
+        status,
+        reason,
+        supplements,
+        expectedStatuses,
+      };
       return bulkChangeStatus(input);
     },
     onMutate: async ({ ids, status }) => {
