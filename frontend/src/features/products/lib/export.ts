@@ -113,23 +113,59 @@ export function downloadCsv(filename: string, csv: string): void {
   downloadBlob(filename, blob);
 }
 
-let hebrewFontPromise: Promise<string | null> | null = null;
+let hebrewFontPromise: Promise<{ regular: string; bold: string } | null> | null =
+  null;
 
-// jspdf only understands TTF/OTF — it cannot parse WOFF/WOFF2 wrappers. We
-// therefore pull the upstream Noto TTF straight from the official notofonts
-// release repo via jsDelivr. The font is fetched lazily so the table page
-// pays nothing until the user actually exports Hebrew content.
-const HEBREW_TTF_URL =
-  "https://cdn.jsdelivr.net/gh/notofonts/notofonts.github.io/fonts/NotoSansHebrew/hinted/ttf/NotoSansHebrew-Regular.ttf";
+const HEBREW_FONT_REGULAR = "NotoSansHebrew-Regular.ttf";
+const HEBREW_FONT_BOLD = "NotoSansHebrew-Bold.ttf";
+const PDF_HEBREW_FONT = "NotoSansHebrew";
+const PDF_LATIN_FONT = "helvetica";
+const HEBREW_CHAR = /[\u0590-\u05FF]/;
 
-async function fetchHebrewFontBase64(): Promise<string | null> {
+// jsPDF paints glyphs left-to-right. Mirror Hebrew for PDF export without setR2L().
+function fixHebrewForPdf(text: string, rtl: boolean): string {
+  if (!rtl || !HEBREW_CHAR.test(text)) return text;
+
+  if (/^[\d\s./:-]+$/.test(text)) return text;
+
+  // Strings with digits/parentheses: reverse Hebrew words only, keep numbers as-is.
+  if (/[0-9()]/.test(text)) {
+    return text.replace(/[\u0590-\u05FF]+/g, (word) =>
+      [...word].reverse().join(""),
+    );
+  }
+
+  // Space-separated Hebrew: reverse word order, then reverse letters in each word.
+  return text
+    .split(/(\s+)/)
+    .map((part) => {
+      if (/^\s+$/.test(part)) return part;
+      if (!HEBREW_CHAR.test(part)) return part;
+      return [...part].reverse().join("");
+    })
+    .reverse()
+    .join("");
+}
+
+// Bundled under /public/fonts so PDF export works offline and without CDN failures.
+async function loadHebrewPdfFonts(): Promise<{ regular: string; bold: string } | null> {
   if (!hebrewFontPromise) {
     hebrewFontPromise = (async () => {
       try {
-        const response = await fetch(HEBREW_TTF_URL);
-        if (!response.ok) return null;
-        const buffer = await response.arrayBuffer();
-        return arrayBufferToBase64(buffer);
+        const base = import.meta.env.BASE_URL;
+        const [regularRes, boldRes] = await Promise.all([
+          fetch(`${base}fonts/${HEBREW_FONT_REGULAR}`),
+          fetch(`${base}fonts/${HEBREW_FONT_BOLD}`),
+        ]);
+        if (!regularRes.ok || !boldRes.ok) return null;
+        const [regularBuf, boldBuf] = await Promise.all([
+          regularRes.arrayBuffer(),
+          boldRes.arrayBuffer(),
+        ]);
+        return {
+          regular: arrayBufferToBase64(regularBuf),
+          bold: arrayBufferToBase64(boldBuf),
+        };
       } catch {
         return null;
       }
@@ -202,29 +238,52 @@ function pdfColumns(t: TFunction): PdfColumnSpec[] {
   ];
 }
 
+interface PdfHeaderCell {
+  text: string;
+  script: PdfScript;
+}
+
+/** PDF headers avoid mixed Hebrew/Latin in one font (Noto has Hebrew glyphs only). */
+function pdfTableHeaders(ctx: PdfLayoutContext): PdfHeaderCell[] {
+  const cols = pdfColumns(ctx.t);
+  if (!ctx.isRtl) {
+    return cols.map((col) => ({ text: col.header, script: "latin" as const }));
+  }
+  const hebrewHeader = (key: PdfColumnSpec["key"]): PdfHeaderCell => {
+    const col = cols.find((c) => c.key === key);
+    return {
+      text: pdfText(ctx, col?.header ?? ""),
+      script: "hebrew",
+    };
+  };
+  return [
+    hebrewHeader("name"),
+    { text: pdfText(ctx, "מקט"), script: "hebrew" },
+    { text: "MAC", script: "latin" },
+    { text: "IMEI", script: "latin" },
+    hebrewHeader("customerId"),
+    hebrewHeader("statusLabel"),
+    hebrewHeader("updatedAt"),
+  ];
+}
+
 const EMPTY_CELL = "—";
 
-function formatPdfDate(value: unknown, locale: string): string {
+function formatPdfDate(value: unknown): string {
   if (!value) return EMPTY_CELL;
   const date = value instanceof Date ? value : new Date(String(value));
   if (Number.isNaN(date.getTime())) return EMPTY_CELL;
-  return date.toLocaleString(locale, {
-    year: "numeric",
-    month: "short",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const pad = (part: number) => String(part).padStart(2, "0");
+  return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
 function pdfCellValue(
   row: PublicProduct,
   key: PdfColumnSpec["key"],
   t: TFunction,
-  locale: string,
 ): string {
   if (key === "statusLabel") return statusLabel(t, row.status);
-  if (key === "updatedAt") return formatPdfDate(row.updatedAt, locale);
+  if (key === "updatedAt") return formatPdfDate(row.updatedAt);
   const value = row[key as keyof PublicProduct];
   if (value === null || value === undefined || value === "") return EMPTY_CELL;
   return String(value);
@@ -269,14 +328,18 @@ function countByStatus(rows: PublicProduct[]): Map<ProductStatusValue, number> {
   return counts;
 }
 
-type PdfFont = "NotoSansHebrew" | "helvetica";
+type PdfScript = "hebrew" | "latin";
 
 interface PdfLayoutContext {
   doc: import("jspdf").jsPDF;
-  font: PdfFont;
+  hebrewFontLoaded: boolean;
   isRtl: boolean;
   locale: string;
   t: TFunction;
+}
+
+function pdfText(ctx: PdfLayoutContext, text: string): string {
+  return fixHebrewForPdf(text, ctx.isRtl);
 }
 
 function pageWidth(doc: import("jspdf").jsPDF): number {
@@ -301,9 +364,22 @@ function align(ctx: PdfLayoutContext): "left" | "right" {
   return ctx.isRtl ? "right" : "left";
 }
 
-function setFont(ctx: PdfLayoutContext, size: number, style: "normal" | "bold" = "normal"): void {
-  ctx.doc.setFont(ctx.font, style);
+function setFont(
+  ctx: PdfLayoutContext,
+  size: number,
+  style: "normal" | "bold" = "normal",
+  script: PdfScript = "hebrew",
+): void {
+  const useHebrew = script === "hebrew" && ctx.hebrewFontLoaded;
+  ctx.doc.setFont(
+    useHebrew ? PDF_HEBREW_FONT : PDF_LATIN_FONT,
+    useHebrew ? style : style === "bold" ? "bold" : "normal",
+  );
   ctx.doc.setFontSize(size);
+}
+
+function headerScript(ctx: PdfLayoutContext): PdfScript {
+  return ctx.isRtl && ctx.hebrewFontLoaded ? "hebrew" : "latin";
 }
 
 function drawBrandHeader(ctx: PdfLayoutContext): void {
@@ -316,27 +392,27 @@ function drawBrandHeader(ctx: PdfLayoutContext): void {
   doc.setFillColor(...PDF_PALETTE.accent);
   doc.rect(0, PDF_BRAND_HEIGHT, width, PDF_ACCENT_HEIGHT, "F");
 
-  setFont(ctx, 10, "normal");
+  setFont(ctx, 10, "normal", headerScript(ctx));
   doc.setTextColor(...PDF_PALETTE.subtitleText);
-  doc.text(ctx.t("app.brandName"), textX(ctx, "start"), 22, {
+  doc.text(pdfText(ctx, ctx.t("app.brandName")), textX(ctx, "start"), 22, {
     align: align(ctx),
   });
 
-  setFont(ctx, 20, "bold");
+  setFont(ctx, 20, "bold", headerScript(ctx));
   doc.setTextColor(...PDF_PALETTE.headerText);
-  doc.text(ctx.t("products.export.pdfReportTitle"), textX(ctx, "start"), 42, {
+  doc.text(pdfText(ctx, ctx.t("products.export.pdfReportTitle")), textX(ctx, "start"), 42, {
     align: align(ctx),
   });
 
-  setFont(ctx, 9, "normal");
+  setFont(ctx, 9, "normal", headerScript(ctx));
   doc.setTextColor(...PDF_PALETTE.subtitleText);
-  doc.text(ctx.t("products.export.pdfReportSubtitle"), textX(ctx, "start"), 56, {
+  doc.text(pdfText(ctx, ctx.t("products.export.pdfReportSubtitle")), textX(ctx, "start"), 56, {
     align: align(ctx),
   });
 
-  const generated = `${ctx.t("products.export.pdfGenerated")}: ${new Date().toLocaleString(ctx.locale)}`;
-  setFont(ctx, 8, "normal");
-  doc.text(generated, textX(ctx, "end"), 42, { align: align(ctx) });
+  const generated = `${ctx.t("products.export.pdfGenerated")}: ${formatPdfDate(new Date())}`;
+  setFont(ctx, 8, "normal", headerScript(ctx));
+  doc.text(pdfText(ctx, generated), textX(ctx, "end"), 42, { align: align(ctx) });
 }
 
 function drawMetaPanel(
@@ -371,19 +447,58 @@ function drawMetaPanel(
 
   labels.forEach((label, index) => {
     const cx = panelX + colGap * index + colGap / 2;
-    setFont(ctx, 7, "normal");
+    setFont(ctx, 7, "normal", headerScript(ctx));
     doc.setTextColor(...PDF_PALETTE.muted);
-    doc.text(label.toUpperCase(), cx, y + 16, { align: "center" });
+    const labelText = ctx.isRtl ? pdfText(ctx, label) : label.toUpperCase();
+    doc.text(labelText, cx, y + 16, { align: "center" });
 
-    setFont(ctx, 10, "bold");
-    doc.setTextColor(...PDF_PALETTE.bodyText);
     const value = values[index];
+    const valueScript: PdfScript =
+      index === 1 ? "latin" : headerScript(ctx);
+    setFont(ctx, 10, "bold", valueScript);
+    doc.setTextColor(...PDF_PALETTE.bodyText);
     const maxWidth = colGap - 16;
-    const lines = doc.splitTextToSize(value, maxWidth) as string[];
+    const displayValue = index === 1 ? value : pdfText(ctx, value);
+    const lines = doc.splitTextToSize(displayValue, maxWidth) as string[];
     doc.text(lines.slice(0, 2), cx, y + 32, { align: "center" });
   });
 
   return y + panelH;
+}
+
+function measureStatusChipLabel(
+  ctx: PdfLayoutContext,
+  statusText: string,
+  count: number,
+): { totalWidth: number; statusText: string; countText: string } {
+  const { doc } = ctx;
+  const countText = ` (${count})`;
+  setFont(ctx, 8, "bold", headerScript(ctx));
+  const statusWidth = doc.getTextWidth(statusText);
+  setFont(ctx, 8, "bold", "latin");
+  const countWidth = doc.getTextWidth(countText);
+  return {
+    totalWidth: statusWidth + countWidth,
+    statusText,
+    countText,
+  };
+}
+
+function drawStatusChipLabel(
+  ctx: PdfLayoutContext,
+  centerX: number,
+  y: number,
+  statusText: string,
+  countText: string,
+  totalWidth: number,
+): void {
+  const { doc } = ctx;
+  setFont(ctx, 8, "bold", "latin");
+  const countWidth = doc.getTextWidth(countText);
+  const startX = centerX - totalWidth / 2;
+  doc.text(countText, startX, y);
+  setFont(ctx, 8, "bold", headerScript(ctx));
+  doc.text(statusText, startX + countWidth, y);
 }
 
 function drawStatusSummary(
@@ -395,17 +510,24 @@ function drawStatusSummary(
   const counts = countByStatus(rows);
   const chipHeight = 22;
   const gap = 8;
+
+  setFont(ctx, 8, "bold", headerScript(ctx));
+  doc.setTextColor(...PDF_PALETTE.bodyText);
+  doc.text(
+    pdfText(ctx, ctx.t("products.export.pdfStatusBreakdown")),
+    textX(ctx, "start"),
+    y + 4,
+    { align: align(ctx) },
+  );
+
   let x = ctx.isRtl ? pageWidth(doc) - PDF_MARGIN : PDF_MARGIN;
-  let rowY = y + 10;
+  let rowY = y + 18;
 
   for (const status of [1, 2, 3, 4, 5] as ProductStatusValue[]) {
     const count = counts.get(status) ?? 0;
-    if (count === 0) continue;
-
-    const label = `${statusLabel(ctx.t, status)}: ${count}`;
-    setFont(ctx, 8, "bold");
-    const textW = doc.getTextWidth(label);
-    const chipW = textW + 20;
+    const statusText = pdfText(ctx, statusLabel(ctx.t, status));
+    const chipLabel = measureStatusChipLabel(ctx, statusText, count);
+    const chipW = chipLabel.totalWidth + 20;
 
     if (!ctx.isRtl && x + chipW > pageWidth(doc) - PDF_MARGIN) {
       x = PDF_MARGIN;
@@ -422,12 +544,19 @@ function drawStatusSummary(
     doc.setDrawColor(...colors.bg);
     doc.roundedRect(chipX, rowY, chipW, chipHeight, chipHeight / 2, chipHeight / 2, "F");
     doc.setTextColor(...colors.text);
-    doc.text(label, chipX + chipW / 2, rowY + 14, { align: "center" });
+    drawStatusChipLabel(
+      ctx,
+      chipX + chipW / 2,
+      rowY + 14,
+      chipLabel.statusText,
+      chipLabel.countText,
+      chipLabel.totalWidth,
+    );
 
     x = ctx.isRtl ? chipX - gap : chipX + chipW + gap;
   }
 
-  return rowY + chipHeight + 14;
+  return rowY + chipHeight + 10;
 }
 
 function drawCompactPageHeader(ctx: PdfLayoutContext): void {
@@ -441,15 +570,15 @@ function drawCompactPageHeader(ctx: PdfLayoutContext): void {
   doc.setFillColor(...PDF_PALETTE.accent);
   doc.rect(0, height, width, 2, "F");
 
-  setFont(ctx, 11, "bold");
+  setFont(ctx, 11, "bold", headerScript(ctx));
   doc.setTextColor(...PDF_PALETTE.headerText);
-  doc.text(ctx.t("products.export.pdfReportTitle"), textX(ctx, "start"), 22, {
+  doc.text(pdfText(ctx, ctx.t("products.export.pdfReportTitle")), textX(ctx, "start"), 22, {
     align: align(ctx),
   });
 
-  setFont(ctx, 8, "normal");
+  setFont(ctx, 8, "normal", headerScript(ctx));
   doc.setTextColor(...PDF_PALETTE.subtitleText);
-  doc.text(ctx.t("app.brandName"), textX(ctx, "end"), 22, {
+  doc.text(pdfText(ctx, ctx.t("app.brandName")), textX(ctx, "end"), 22, {
     align: align(ctx),
   });
 }
@@ -467,15 +596,15 @@ function drawPageFooter(
   doc.setLineWidth(0.5);
   doc.line(PDF_MARGIN, y - 8, width - PDF_MARGIN, y - 8);
 
-  setFont(ctx, 7, "normal");
+  setFont(ctx, 7, "normal", headerScript(ctx));
   doc.setTextColor(...PDF_PALETTE.muted);
-  doc.text(ctx.t("products.export.pdfFooter"), width / 2, y, { align: "center" });
-  doc.text(
-    ctx.t("products.export.pdfPage", { page: pageNumber, pages: pageCount }),
-    textX(ctx, "end"),
-    y,
-    { align: align(ctx) },
-  );
+  doc.text(pdfText(ctx, ctx.t("products.export.pdfFooter")), width / 2, y, {
+    align: "center",
+  });
+  setFont(ctx, 7, "normal", "latin");
+  doc.text(`${pageNumber} / ${pageCount}`, textX(ctx, "end"), y, {
+    align: align(ctx),
+  });
 }
 
 export async function downloadPdf(
@@ -492,21 +621,29 @@ export async function downloadPdf(
   const locale = isHebrewLocale ? "he-IL" : "en-US";
   const doc = new JsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
 
-  let tableFont: PdfFont = "helvetica";
+  let hebrewFontLoaded = false;
   if (isHebrewLocale) {
-    const fontBase64 = await fetchHebrewFontBase64();
-    if (fontBase64) {
-      doc.addFileToVFS("NotoSansHebrew.ttf", fontBase64);
-      doc.addFont("NotoSansHebrew.ttf", "NotoSansHebrew", "normal");
-      doc.addFont("NotoSansHebrew.ttf", "NotoSansHebrew", "bold");
-      doc.setFont("NotoSansHebrew");
-      doc.setR2L(true);
-      tableFont = "NotoSansHebrew";
+    const fonts = await loadHebrewPdfFonts();
+    if (fonts) {
+      doc.addFileToVFS(HEBREW_FONT_REGULAR, fonts.regular);
+      doc.addFileToVFS(HEBREW_FONT_BOLD, fonts.bold);
+      doc.addFont(HEBREW_FONT_REGULAR, PDF_HEBREW_FONT, "normal");
+      doc.addFont(HEBREW_FONT_BOLD, PDF_HEBREW_FONT, "bold");
+      hebrewFontLoaded = true;
     }
   }
 
-  const ctx: PdfLayoutContext = { doc, font: tableFont, isRtl: isHebrewLocale, locale, t };
+  doc.setFont(PDF_LATIN_FONT, "normal");
+
+  const ctx: PdfLayoutContext = {
+    doc,
+    hebrewFontLoaded,
+    isRtl: isHebrewLocale,
+    locale,
+    t,
+  };
   const exportMeta: PdfExportMeta = meta ?? { scope: "filtered" };
+  const tableHalign: "left" | "right" = isHebrewLocale ? "right" : "left";
 
   drawBrandHeader(ctx);
   let cursorY = PDF_BRAND_HEIGHT + PDF_ACCENT_HEIGHT + 14;
@@ -514,21 +651,31 @@ export async function downloadPdf(
   cursorY = drawStatusSummary(ctx, cursorY, rows);
 
   const cols = pdfColumns(t);
+  const tableHeaders = pdfTableHeaders(ctx);
   const statusColIndex = cols.findIndex((c) => c.key === "statusLabel");
-  const head = [cols.map((c) => c.header)];
+  const head = [tableHeaders.map((h) => h.text)];
   const body = rows.map((row) =>
-    cols.map((c) => pdfCellValue(row, c.key, t, locale)),
+    cols.map((c) => {
+      const raw = pdfCellValue(row, c.key, t);
+      if (c.key === "statusLabel") {
+        return fixHebrewForPdf(raw, isHebrewLocale);
+      }
+      return raw;
+    }),
   );
+
+  const tableWidth = cols.reduce((sum, col) => sum + col.width, 0);
 
   autotable(doc, {
     head,
     body,
     startY: cursorY + 4,
     margin: { top: 48, right: PDF_MARGIN, bottom: 44, left: PDF_MARGIN },
-    tableWidth: "auto",
+    tableWidth,
     styles: {
-      font: tableFont,
+      font: PDF_LATIN_FONT,
       fontSize: 8.5,
+      halign: tableHalign,
       cellPadding: { top: 6, right: 5, bottom: 6, left: 5 },
       overflow: "linebreak",
       lineColor: PDF_PALETTE.metaBorder,
@@ -539,8 +686,10 @@ export async function downloadPdf(
     headStyles: {
       fillColor: PDF_PALETTE.tableHead,
       textColor: [255, 255, 255],
+      font: PDF_LATIN_FONT,
       fontStyle: "bold",
       fontSize: 8,
+      halign: tableHalign,
       cellPadding: { top: 7, right: 5, bottom: 7, left: 5 },
     },
     alternateRowStyles: {
@@ -550,6 +699,21 @@ export async function downloadPdf(
       cols.map((col, index) => [index, { cellWidth: col.width }]),
     ),
     didParseCell: (data) => {
+      const useHebrewCell = hebrewFontLoaded && isHebrewLocale;
+      if (data.section === "head") {
+        const header = tableHeaders[data.column.index];
+        if (header) {
+          data.cell.text = [header.text];
+          const useHebrewFont =
+            useHebrewCell && header.script === "hebrew";
+          data.cell.styles.font = useHebrewFont
+            ? PDF_HEBREW_FONT
+            : PDF_LATIN_FONT;
+          data.cell.styles.fontStyle = "bold";
+        }
+        return;
+      }
+
       if (data.section === "body" && data.column.index === statusColIndex) {
         const row = rows[data.row.index];
         if (!row) return;
@@ -557,6 +721,17 @@ export async function downloadPdf(
         data.cell.styles.fillColor = colors.bg;
         data.cell.styles.textColor = colors.text;
         data.cell.styles.fontStyle = "bold";
+        if (useHebrewCell) {
+          data.cell.styles.font = PDF_HEBREW_FONT;
+        } else {
+          data.cell.text = [row.statusLabel];
+        }
+        return;
+      }
+
+      if (data.section === "body") {
+        data.cell.styles.font = PDF_LATIN_FONT;
+        data.cell.styles.fontStyle = "normal";
       }
     },
     didDrawPage: (data) => {
