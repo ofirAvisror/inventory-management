@@ -1,4 +1,5 @@
 // paths.ts
+// This file contains the paths for the application.
 export const paths = {
   home: "/",
   login: "/login",
