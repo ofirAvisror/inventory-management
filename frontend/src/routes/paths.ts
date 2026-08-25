@@ -1,5 +1,6 @@
 // paths.ts
 // This file contains the paths for the application.
+// It is used to navigate between the pages of the application.
 export const paths = {
   home: "/",
   login: "/login",
