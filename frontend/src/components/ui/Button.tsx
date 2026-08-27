@@ -1,3 +1,4 @@
+// Button.tsx
 import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from "react";
 
 type Variant = "primary" | "secondary" | "danger" | "ghost";
