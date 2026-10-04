@@ -1,3 +1,4 @@
+// src/services/auditService.ts
 import { Types, type ClientSession } from "mongoose";
 import { AuditLog } from "../models/AuditLog.js";
 import type { ProductStatusValue } from "../types/product.js";
