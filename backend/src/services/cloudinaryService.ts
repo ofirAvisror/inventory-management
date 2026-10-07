@@ -1,3 +1,4 @@
+/// src/services/cloudinaryService.ts
 import { v2 as cloudinary, type UploadApiResponse } from "cloudinary";
 import { env } from "../config/env.js";
 import { ALLOWED_IMAGE_MIME_TYPES } from "../config/uploadLimits.js";
