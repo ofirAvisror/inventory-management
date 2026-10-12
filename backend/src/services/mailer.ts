@@ -1,3 +1,4 @@
+// src/services/mailer.ts
 import nodemailer, { type Transporter } from "nodemailer";
 import { env } from "../config/env.js";
 
