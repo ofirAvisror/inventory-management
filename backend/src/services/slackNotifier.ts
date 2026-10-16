@@ -1,3 +1,4 @@
+// src/services/slackNotifier.ts
 import { env } from "../config/env.js";
 
 interface NewUserPayload {
