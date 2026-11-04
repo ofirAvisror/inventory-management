@@ -1,3 +1,4 @@
+// src/services/productService.ts
 import mongoose, { Types } from "mongoose";
 import { HttpError } from "../middleware/error.js";
 import { Product, type ProductDoc } from "../models/Product.js";
