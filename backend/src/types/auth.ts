@@ -1,3 +1,4 @@
+// src/types/auth.ts
 import type { Request } from "express";
 
 export type AuthRole = "admin" | "user";
